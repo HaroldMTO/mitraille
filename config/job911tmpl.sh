@@ -23,7 +23,6 @@ fi
 # mandatory
 ulimit -s unlimited
 export DR_HOOK=0
-export DR_HOOK_NOT_MPI=1
 export DR_HOOK_IGNORE_SIGNALS=-1
 export DR_HOOK_SILENT=1
 export KMP_STACKSIZE=2G
@@ -31,12 +30,12 @@ export KMP_STACKSIZE=2G
 # additional
 export EC_MPI_ATEXIT=0
 export EC_PROFILE_HEAP=0
+export LD_LIBRARY_PATH=~martinezs/public/opt/i-13.1.4.183/lib/fftw-3.3.4/lib
 unset DATA
 env > env.txt
 
 lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|NODE|core|std(out|err))\."
 alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --'
-alias mpiexe1='mpiauto --wrap -nn 1 -np 1 -nnp 1 --'
 alias lnv='ln -sfv'
 
 set -e
@@ -44,12 +43,11 @@ rm -f core.*
 
 echo "Setting job profile" #TAG PROFILE
 
-if [ -z "$selnam" -o -z "$bin" -o -z "$ecoclimap" ]
+if [ -z "$nam" -o -z "$bin" ]
 then
 	echo "Error: mandatory variables not set
-selnam: '$selnam'
+nam: '$nam'
 bin: '$bin'
-ecoclimap: '$ecoclimap'
 " >&2
 	exit 1
 fi
@@ -60,33 +58,17 @@ then
 	grep -f $varenv env.txt || echo "--> none"
 fi
 
-echo "Linking constants for Surfex" # TAG CONST
-lnv $ecoclimap/* .
-
-echo "Getting namelist $selnam"
-nam=$(echo $selnam | sed -re 's:.+\.([^.]+\.nam):\1:')
-cp $selnam $nam
+echo "Getting main namelist $selnam"
+cp $nam fort.4
 
 echo "Launch MPI job"
 mpiexe $bin > mpi.out 2> mpi.err
-find -type f -newer $nam | grep -vE $lstRE | xargs ls -l
+find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 
-if [ -n "$pgd" -a -n "$pgdfa" ]
-then
-	echo "Making FA PGD:"
-	ls $pgd $pgdfa
-	$LFITOOLS faempty $pgdfa test.fa
-	$sfxtools sfxlfi2fa --sfx-fa--file test.fa --sfx-lfi-file $pgd
-
-	mpiexe1 $sfxtools > mpisfx.out 2> mpisfx.err
-	find -type f -newer test.fa | grep -vE $lstRE | xargs ls -l
-
-	$LFITOOLS testfa < $lfi2fa
-fi
+echo "Rename files"
+lnv MATDILA MDI
+lnv MATDILA MCO
 
 rm -f stdout.* stderr.*
-
-echo "Log files list:"
-ls -l LISTING_PGD.txt
 
 touch jobOK

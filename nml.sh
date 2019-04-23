@@ -13,16 +13,11 @@ cy=$1
 mkdir -p $cy
 
 echo "Jobs expés"
-grep -l FILE_PATH_EXPS old/$cy/protojobs/* | sed -re 's:.+/(.+)\.sh:\1:' > \
-	info/xptable
-grep -vl FILE_PATH_EXPS old/$cy/protojobs/* | sed -re 's:.+/(.+)\.sh:\1:' | \
-	grep -v _PGDC_ > info/validconfs.txt
-sort -u info/validconfs.txt info/xptable > info/confs.txt
+grep -l FILE_PATH_EXPS old/$cy/protojobs/*.sh | sed -re 's:.+/(.+)\.sh:\1:' | \
+	sort -u > info/xptable
 
 echo "Répertoires jobs et namelist"
 mkdir -p old/$cy/jobs
-mkdir -p $cy/namelist $cy/quadnam $cy/selnam $cy/diffnam $cy/fpnam $cy/dfinam \
-	$cy/deltanam $cy/fcnam
 
 echo "Date fixe dans les scritps"
 for fic in old/$cy/protojobs/*.sh
@@ -57,8 +52,23 @@ do
 	then
 		cp $ficj ${ficj/_TSTDFI_/_DFIBIAS_}
 		mv $ficj ${ficj/_TSTDFI_/_DFIINCR_}
+		basename ${ficj/_TSTDFI_/_DFIBIAS_} .sh
+		basename ${ficj/_TSTDFI_/_DFIINCR_} .sh
+	else
+		basename $ficj .sh
 	fi
-done
+done | grep -v _PGDC_ | sort -u > info/validconfs.txt
+
+grep -f info/validconfs.txt config/profil_table | cut -f1 | sort -u \
+	> info/mitconfs.txt
+if comm -23 info/validconfs.txt info/mitconfs.txt | grep -E '.+'
+then
+	echo "Erreur : nouvelles conf absentes de mitraillette" >&2
+	exit 1
+fi
+
+mkdir -p $cy/namelist $cy/quadnam $cy/selnam $cy/diffnam $cy/fpnam $cy/dfinam \
+	$cy/deltanam $cy/fcnam
 
 echo "Valeurs fixes en namelist, delta namelist"
 rm -f info/dfitable
@@ -69,6 +79,7 @@ do
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf/_DFIINCR_/_TSTDFI_}.nam
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf}_lin.nam
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf}_fp.nam
+	[ ! -s $nml ] && nml=old/$cy/namelist/${conf}.selnam_dila
 	[ ! -s $nml ] && continue
 
 	ntask=$((ntaskt-ntaskio))
@@ -132,8 +143,9 @@ do
 done < config/profil_table
 
 echo "Déplacement/conversion selnam"
-grep -E "/.+\.selnam" old/$cy/jobs/* | grep -vE "selnam_fp|\.diff" | \
-	sed -re 's:.+/(.+)\.sh.+/([^ ]+) +(.+):\1 \2 \3:' > info/selnam
+grep -E "/.+\.selnam" old/$cy/jobs/* | grep -vE "selnam_(fp|dila)|\.diff" | \
+	sed -re 's:.+/(.+)\.sh.+/([^ ]+) +(.+):\1 \2 \3:' | \
+	sed -re 's:\w+\.selnam_exseg1$:EXSEG1.nam:' > info/selnam
 
 while read conf fic selnam
 do
@@ -145,7 +157,7 @@ done < info/selnam
 echo "Déplacement diffnam"
 grep -E "/.+\.selnam" old/$cy/jobs/* | grep -E "\.diff" | \
 	sed -re 's:.+/(.+)\.sh.+/([^ ]+) +(.+):\1 \3:' > $cy/difftable
-for fic in old/$cy/namelist/*.diff
+for fic in $(find old/$cy/namelist -name \*.diff)
 do
 	# petite erreur namelist 'CONV_PGD' 1 conf L3 AROMALP1300
 	cp $fic $cy/diffnam/$(basename ${fic/_CONV_PGD/_CONVPGD} .diff)
@@ -170,41 +182,66 @@ do
 done < $cy/fptable
 
 echo "Table analyses"
-grep -E '^ *\$E?CP.+/.+(EBAUCHE|ICM??.+INIT)$' old/$cy/jobs/* | \
+grep -E '^ *\$E?CP.+/.+(EBAUCHE|ICM??.+INIT)$' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(.+):\1 \2 \3:' | \
 	grep -vE "_DFIBIAS_.+_analyse|_DFIINCR_.+_guess" > $cy/initable
 
-echo "Table analyse surfex"
+echo "Table analyses surfex"
 grep -E '^ *\$E?CP.+/.+INIT\.sfx *$' old/$cy/jobs/* | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +.+INIT\.sfx:\1 \2:' \
 	> $cy/inisfxtable
 
-echo "Table forcage"
-grep -E '^ *\$E?CP.+/.+ +ELS[AC].+' old/$cy/jobs/* | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/(.+) +ELS.+:\1 \2:' | \
+echo "Table forcages"
+grep -E '^ *(\$E?CP|ln -\w*) (.+/)?.+ +ELS[AC].+' old/$cy/jobs/*.sh | \
+	sed -re 's:.+/(.+)\.sh\: *(\$E?CP|ln -\w*) (.+/)?(.+) +ELS.+:\1 \4:' | \
 	sed -re 's:_COUPL0+[^ ]*::' | uniq > $cy/coupltable
 
-echo "Tables clim, clim fp, filtre"
-grep -E '^ *\$E?CP.+/.+ +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa) *$' old/$cy/jobs/* | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa):\1 \2 \3:' \
+echo "Tables clim, clim fp, filtre, const, pgd et pgdfa"
+grep -E '^ *\$E?CP.+/.+ +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa) *$' \
+	old/$cy/jobs/*.sh | sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa):\1 \2 \3:' \
 	> $cy/climtable
-grep -E '^ *\$E?CP.+/.+ +const\.clim(\.\w+)+ *$' old/$cy/jobs/* | \
+grep -E '^ *\$E?CP.+/.+ +const\.clim(\.\w+)+ *$' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(const\.clim(\.\w+)+):\1 \2 \3:' \
 	> $cy/climfptable
-grep -E '^ *\$E?CP.+/.+ +matrix\.fil\.' old/$cy/jobs/* | \
+grep -E '^ *\$E?CP.+/.+ +matrix\.fil\.' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(matrix\.fil\.\w+):\1 \2 \3:' \
 	> $cy/filtertable
-grep -E '^ *\$E?CP.+/.+ +\w+\.(hdr|dir) *$' old/$cy/jobs/* | \
+grep -E '^ *\$E?CP.+/.+ +\w+\.(hdr|dir) *$' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(\w+\.(hdr|dir)):\1 \2 \3:' \
 	> $cy/constable
-grep -E '^ *file_lfi=PGD\w+\.lfi *$' old/$cy/jobs/* | \
+grep -E '^ *file_lfi=PGD\w+\.lfi *$' old/$cy/jobs/*PGDC*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *file_lfi=(PGD\w+\.lfi):\1 \2:' | \
 	sed -re 's:_PGDC_:_PGDS_:' > $cy/pgdtable
-grep -E '\$CP +.+__CLIM_MODEL_(.+) *$' old/$cy/jobs/* | \
+grep -E '^ *\$E?CP +PGDFILE_.+\.fa +Neworog *$' old/$cy/jobs/*C923* | \
+	sed -re 's:.+/(.+)\.sh\: *\$CP +(PGDFILE_.+\.fa) +Neworog:\1 \2:' \
+	>> $cy/pgdtable
+grep -E '\$CP +.+__CLIM_MODEL_(.+) *$' old/$cy/jobs/*C923*.sh | \
 	sed -re 's:.+/(.+)\.sh\:.+__CLIM_MODEL_(.+)_m.+:\1 \1 Const.Clim.01:' | \
 	sed -re 's:_C923_:_PGDS_:' -e 's:_SFEX::' > $cy/pgdfatable
+grep -E '\$CP +.+SURFEX_FILES/(.+) *$' old/$cy/jobs/*PGDI*.sh | \
+	sed -re 's:.+/(.+)\.sh\: *\$CP +.+/SURFEX_FILES/(.+) *$:\1 \1 \2:' | \
+	sed -re 's:_PGDI_:_C923_:' >> $cy/pgdfatable
 
 echo "Table IO Server"
-grep -E '^ *\$\{?IOPOLL}?' old/$cy/jobs/* | \
+grep -E '^ *\$\{?IOPOLL}?' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$\{?IOPOLL}? *.*\-\-prefix +(\w+):\1 \2:' \
 	> $cy/ioservtable
+
+echo "Diff tables"
+for fic in $cy/*table
+do
+	diff -Bbq $fic config
+done
+
+exit
+cd ~saez/mitraille/cy46t1
+grep -lE '\<COMPLETED\>' */O* | sed -re 's:.+/O(.+)\.o.+:\1:' | sort -u \
+	> config/validconfs.txt
+
+for fic in mitraille_*/O*.o*
+do
+	conf=$(basename $fic | sed -re 's:O(.+)\..+:\1:')
+	grep -A 1200 'debug =>cat$' $fic | tail -n +2 | awk '{if ($1=="debug") exit;
+		print $0;
+	}' > ~/mitraille/pat/cy46t1/$conf.nam
+done

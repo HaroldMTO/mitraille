@@ -8,6 +8,7 @@
 #SBATCH --time "_wall"
 #SBATCH --exclusiv
 #SBATCH -o _name.log
+#SBATCH --export=_varexp
 
 if [ "$SLURM_JOB_NAME" ]
 then
@@ -19,13 +20,26 @@ then
 "
 fi
 
+# mandatory
 ulimit -s unlimited
+export DR_HOOK=0
+export DR_HOOK_IGNORE_SIGNALS=-1
+export DR_HOOK_SILENT=1
+export EC_PROFILE_HEAP=0
+export KMP_STACKSIZE=2G
+export LD_LIBRARY_PATH=~martinezs/public/opt/i-13.1.4.183/lib/fftw-3.3.4/lib
+
+# additional
+export EC_MPI_ATEXIT=0
+unset DATA
 env > env.txt
 
-set -e
-
-alias mpiexe='mpiauto --verbose --wrap -np _ntaskt -nnp _ntpn --'
+lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|NODE|core|std(out|err))\."
+alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --'
 alias lnv='ln -sfv'
+
+set -e
+rm -f core.*
 
 echo "Setting job profile" #TAG PROFILE
 
@@ -37,6 +51,12 @@ bin: '$bin'
 rrtm: '$rrtm'
 " >&2
 	exit 1
+fi
+
+if [ -n "$varenv" ] && [ -s $varenv ]
+then
+	echo "Possibly influencing environment variables:"
+	grep -f $varenv env.txt || echo "--> none"
 fi
 
 echo "Linking clims and filters for Surfex and FullPOS (if required)" # TAG CLIM
@@ -58,13 +78,19 @@ fi
 
 if [ "$initsfx" ]
 then
-	echo "Linking Initial Condition and Ecoclimap constants for Surfex"
+	echo "Linking Initial Conditions for Surfex"
 	lnv $initsfx ICMSHARPEINIT.sfx
+fi
+
+if [ "$ecoclimap" ]
+then
+	echo "Linking Ecoclimap constants for Surfex"
 	lnv $ecoclimap/* .
 fi
 
 if [ "$lbc" ]
 then
+	[ -f $(basename $lbc) ] && lbc=$(basename $lbc)
 	echo "Getting Boundary Conditions files:"
 	ls $lbc*
 
@@ -82,7 +108,7 @@ then
 		i=$((i+1))
 	done
 
-	# 0 and 1 together (sometimes)
+	# dirty: 0 and 1 together (sometimes)
 	[ $i -eq 1 ] && lnv $fic $(printf "ELSCFARPEALBC%03d" $i)
 fi
 
@@ -95,7 +121,7 @@ lnv fort.4 fort.25
 if [ "$selnam" ]
 then
 	echo "Getting side namelist $selnam"
-	fout=$(echo $selnam | sed -re 's:.+\.([^.]+\.nam):\1:')
+	fout=$(echo $selnam | sed -re 's:.+\.(.+\.nam):\1:')
 	cp $selnam $fout
 
 	# restart option: only for conf with SURFEX for the moment
@@ -107,8 +133,12 @@ then
 		xpnam --dfile="${diffnam}_CONVPGD.selnam_exseg1" --inplace $fout
 
 		echo "Launch MPI job"
-		mpiexe $bin > mpipgd.log 2> mpipgd.err
+		mpiexe $bin > mpipgd.out 2> mpipgd.err
+		find -type f -newer $fout | grep -vE $lstRE | xargs ls -l
 
+		# reset initial namelists
+		cp $nam fort.4
+		cp $selnam $fout
 		mv ICMSHARPE+0000.sfx Const.Clim.sfx
 
 		echo "Make namelist for PREP from delta file:"
@@ -117,57 +147,67 @@ then
 		xpnam --dfile="${diffnam}_CONVPREP.nam" --inplace fort.4
 
 		echo "Launch MPI job"
-		mpiexe $bin > mpiprep.log 2> mpiprep.err
+		mpiexe $bin > mpiprep.out 2> mpiprep.err
+		find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
+
+		# reset initial namelists
+		cp $nam fort.4
 		mv ICMSHARPE+0000.sfx ICMSHARPEINIT.sfx
 
 		echo "Change orography in PGD (Const.Clim.sfx)"
 		$LFITOOLS testfa < $orog
 	fi
-
-	# reset initial namelists
-	cp $nam fort.4
-	cp $selnam $fout
 fi
 
 if [ "$fpnam" ]
 then
 	echo "Getting FPOS frequency namelists" # TAG FPOS
 
-	for fic in $fpnam
+	for fic in $fpnam*
 	do
 		# fpnam: ...[0-9] or ..fp
-		ech=$(echo $fic | sed -re 's:.+([0-9]+|fp)$:\1:')
+		ech=$(echo $fic | sed -re 's:[^0-9]+([0-9]+|fp)$:\1:')
 		if [ $ech = "fp" ]
 		then
 			i=0
 			while [ $i -lt 24 ]
 			do
-				cp $fic $(printf "xxt%06d00" $i)
+				lnv $fic $(printf "xxt%06d00" $i)
 				i=$((i+1))
 			done
 
-			cp $fic xxt00010000
-		elif [ $ech -eq 0 ]
-		then
-			cp $fic xxt00000000
+			lnv $fic xxt00010000
 		else
-			cp $fic $(printf "xxt%06d00" $ech)
+			lnv $fic $(printf "xxt%06d00" $ech)
 		fi
 	done
 fi
 
 echo "Launch MPI job"
-mpiexe $bin > mpi.log 2> mpi.err
+if [ ! -f mpiOK ]
+then
+	touch fort.4
+	mpiexe $bin > mpi.out 2> mpi.err
+	find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
+	touch mpiOK
+fi
 
 if [ "$fcnam" ]
 then
 	echo "Launching other jobs"
-	rm -f mpifc.log mpifc.err
-	for fnam in $fcnam
-	do
-		cp $fnam fort.4
-		mpiexe $bin >> mpifc.log 2>> mpifc.err
-	done
+	if [ ! -f mpifcOK ]
+	then
+		rm -f mpifc.out mpifc.err
+		for fnam in $fcnam*
+		do
+			echo ". job with namelist $fnam"
+			cp $fnam fort.4
+			mpiexe $bin >> mpifc.out 2>> mpifc.err
+			find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
+		done
+
+		touch mpifcOK
+	fi
 
 	cp $nam fort.4
 fi
@@ -175,9 +215,15 @@ fi
 if [ "$diffnam" ]
 then
 	echo "Launch MPI job with restart"
-	mkdir start
-	mv NODE.001_01 ICMSHARPE+* start
-	mpiexe $bin >> mpidiff.log 2>> mpidiff.err
+	if [ ! -f mpidiffOK ]
+	then
+		mkdir -p start
+		mv NODE.001_01 ICMSHARPE+* start
+		touch fort.4
+		mpiexe $bin > mpidiff.out 2> mpidiff.err
+		find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
+		touch mpidiffOK
+	fi
 
 	echo "Compare last forecast step:"
 	fcst=$(ls -1 ICMSHARPE+* | sort | tail -1)
@@ -188,26 +234,42 @@ fi
 if [ "$ios" ]
 then
 	echo "Post-processing files (IO server)"
-	$UTILS/io_poll --prefix ICMSH
-	[ "$fpnam" ] && $UTILS/io_poll --prefix PF
-
-	alias lnv='lfi_move -pack -force'
+	if [ ! -f ioOK ]
+	then
+		touch ioOK.tmp
+		io_poll --prefix ICMSH
+		[ "$fpnam" ] && io_poll --prefix PF
+		find -type f -newer ioOK.tmp
+		mv ioOK.tmp ioOK
+	fi
 fi
 
 echo "Rename files"
-for fic in $(find -name \*ARPE+\* | grep -E 'ICMSH|PF|DHF(DL|ZO)')
+for fic in $(find -maxdepth 1 -name \*ARPE+\* | grep -E 'ICMSH|PF|DHF(DL|ZO)')
 do
-	prefix=$(echo $fic | sed -re 's:\./(.+)ARPE.*\+[0-9]+:\1:')
-	case $ftype in
+	prefix=$(echo $fic | sed -re 's:\./(.+)ARPE.*\+[0-9]+(\.sfx)?:\1:')
+	case $prefix in
 		ICMSH) ftype=HIST;;
 		DHFDL) ftype=DDHFDL;;
 		DHFZO) ftype=DDHFZO;;
 		PF) ftype=$(echo $fic | sed -re 's:PFARPE(.+)\+[0-9]+:\1:');;
 	esac
 
-	ech=$(echo $fic | sed -re 's:.+\+0{2,3}([0-9]{1,2}):\1:')
-	lnv $fic $(printf "ARPE__ech%04d.$ftype\n" $ech)
+	ech=$(echo $fic | sed -re 's:.+\+0{,3}([0-9]{1,})(\.sfx)?:\1:')
+
+	if [ "$ios" ] && [ $ftype = "HIST" -o $ftype = "PF" ]
+	then
+		lfi_move -pack -force $fic $(printf "ARPE.%04d.$ftype\n" $ech)
+	else
+		lnv $fic $(printf "ARPE.%04d.$ftype\n" $ech)
+	fi
 done
+
+echo "Remove large init files"
+[ -s EBAUCHE ] && rm ICMSHARPEINIT
+rm -f ICMSHARPEIMIN
+
+rm -f stdout.* stderr.*
 
 echo "Log and profiling files:"
 ls -l ifs.stat NODE.*
