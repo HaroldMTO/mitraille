@@ -68,7 +68,10 @@ jobwait()
 		[ $force -eq 0 ] && sacct -nPXj $jobid -o state | grep -vi COMPLETED &&
 			continue
 
-		[ "$ref" ] && spdiff $ddcy/$conf/NODE_001.01 $ref/$conf/NODE_001.01
+		[ "$ref" -a -s $ref/$conf/NODE.001_01 ] &&
+			grep -qi 'spectral norms' $ref/$conf/NODE.001_01 &&
+			spdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01 | \
+			sed -re 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g' -e 's:  +([A-Z]+):\t\1:g'
 	done < jobs.txt
 }
 
@@ -184,12 +187,19 @@ fi
 
 echo "IFS pack found is '$pack'"
 
-# because set -e...
-[ -d $cycle ] || cycle=$mitra/$cycle
-ls -d $cycle >/dev/null
+if [ ! -d $cycle ]
+then
+	cycle=$mitra/$cycle
+	ls -d $cycle >/dev/null
+fi
 
 cycle=$(cd $cycle;pwd)
 ddcy=$DATA/$(basename $cycle)
+if [ "$ref" ] && [ ! -d $ref ]
+then
+	ref=$DATA/$ref
+	ls -d $ref >/dev/null
+fi
 
 rm -f jobs.txt
 grep -vE '^\s*#' $mitra/config/profil_table | \
@@ -202,6 +212,10 @@ do
 	if [ -e $ddcy/$conf/jobOK ]
 	then
 		echo "--> job $conf.sh already succeeded"
+		[ "$ref" -a -s $ref/$conf/NODE.001_01 ] &&
+			grep -qi 'spectral norms' $ref/$conf/NODE.001_01 &&
+			spdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01 | \
+			sed -re 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g' -e 's:  +([A-Z]+):\t\1:g'
 		continue
 	elif [ $force -eq 0 ] && ! grep -qE "^$conf$" $mitra/config/validconfs.txt
 	then
@@ -348,6 +362,6 @@ do
 	fi
 done
 
-[ ! -s jobs.txt ] && jobwait
+[ -s jobs.txt ] && jobwait
 
 rm -f job.profile const.txt clim.txt fpos.txt init.txt jobs.txt
