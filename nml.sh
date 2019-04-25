@@ -18,9 +18,10 @@ grep -l FILE_PATH_EXPS old/$cy/protojobs/*.sh | sed -re 's:.+/(.+)\.sh:\1:' | \
 
 echo "Répertoires jobs et namelist"
 mkdir -p old/$cy/jobs
+rm -f old/$cy/jobs/*
 
 echo "Date fixe dans les scritps"
-for fic in old/$cy/protojobs/*.sh
+for fic in old/$cy/protojobs/[A-Z]*.sh
 do
 	grep -q FILE_PATH_EXPS $fic && continue
 
@@ -61,17 +62,15 @@ done | grep -v _PGDC_ | sort -u > info/validconfs.txt
 
 grep -f info/validconfs.txt config/profil_table | cut -f1 | sort -u \
 	> info/mitconfs.txt
-if comm -23 info/validconfs.txt info/mitconfs.txt | grep -E '.+'
-then
-	echo "Erreur : nouvelles conf absentes de mitraillette" >&2
-	exit 1
-fi
+comm -23 info/validconfs.txt info/mitconfs.txt | grep -E '.+' &&
+	echo "Attention : anciennes/nouvelles conf absentes de mitraillette" >&2
 
-mkdir -p $cy/namelist $cy/quadnam $cy/selnam $cy/diffnam $cy/fpnam $cy/dfinam \
-	$cy/deltanam $cy/fcnam
+mkdir -p $cy/namelist $cy/quadnam $cy/selnam $cy/diffnam $cy/fpnam $cy/fcnam \
+	$cy/deltanam
 
 echo "Valeurs fixes en namelist, delta namelist"
-rm -f info/dfitable
+rm -f info/dfitable $cy/namelist/* $cy/fcnam/* $cy/deltanam/*
+
 while read conf bin mem wall cpu ntaskio ntaskt nnodes nthread
 do
 	nml=old/$cy/namelist/$conf.nam
@@ -80,73 +79,68 @@ do
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf}_lin.nam
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf}_fp.nam
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf}.selnam_dila
+	#[ ! -s $nml ] && nml=old/$cy/namelist/${conf}.selnam_pgd
 	[ ! -s $nml ] && continue
 
 	ntask=$((ntaskt-ntaskio))
 
+	cat > val.tmp <<-EOF
+		s/__NCOMBFLEN__/1800000/
+		s/__MP_TYPE__/2/
+		s/__LOPT_SCALAR__/.TRUE./
+		s/__MBX_SIZE__|substr6/1024000000/
+		s/__NTASK_IO__/$ntaskio/
+		s/__NTASKS__|substrC/$ntask/
+	EOF
+
 	if echo $conf | grep -qE '_DFIBIAS_'
 	then
-		sed -e "s/__NCOMBFLEN__/1800000/" -e "s/__MP_TYPE__/2/" \
-			-e "s/__LOPT_SCALAR__/.TRUE./" -e "s/__MBX_SIZE__/1024000000/" \
-			-e "s/__NTASK_IO__/$ntaskio/" -e "s/__NTASKS__/$ntask/" \
-			-e "s/_lbias_/.TRUE./" -e "s/_lincr_/.FALSE./" $nml > \
+		sed -rf val.tmp -e "s/_lbias_/.TRUE./" -e "s/_lincr_/.FALSE./" $nml > \
 			$cy/namelist/$conf.nam
 		echo $conf >> info/dfitable
 	elif echo $conf | grep -qE '_DFIINCR_'
 	then
-		sed -e "s/__NCOMBFLEN__/1800000/" -e "s/__MP_TYPE__/2/" \
-			-e "s/__LOPT_SCALAR__/.TRUE./" -e "s/__MBX_SIZE__/1024000000/" \
-			-e "s/__NTASK_IO__/$ntaskio/" -e "s/__NTASKS__/$ntask/" \
-			-e "s/_lbias_/.FALSE./" -e "s/_lincr_/.TRUE./" $nml > \
+		sed -rf val.tmp -e "s/_lbias_/.FALSE./" -e "s/_lincr_/.TRUE./" $nml > \
 			$cy/namelist/$conf.nam
 		echo $conf >> info/dfitable
-	else
-		sed -e "s/__NCOMBFLEN__/1800000/" -e "s/__MP_TYPE__/2/" \
-			-e "s/__LOPT_SCALAR__/.TRUE./" -e "s/__MBX_SIZE__/1024000000/" \
-			-e "s/__NTASK_IO__/$ntaskio/" -e "s/__NTASKS__/$ntask/" \
-			$nml > $cy/namelist/$conf.nam
-	fi
-
-	# suppression namelists vides et espaces
-	cat $nml | xargs | sed -re 's:&\w+\s+/\s*::g' -e 's:\s+:\n:g' \
-		> $cy/deltanam/$conf.nam
-
-	if echo $nml | grep -qE '_lin\.nam'
-	then
-		sed -e "s/__NCOMBFLEN__/1800000/" -e "s/__MP_TYPE__/2/" \
-			-e "s/__LOPT_SCALAR__/.TRUE./" -e "s/__MBX_SIZE__/1024000000/" \
-			-e "s/__NTASK_IO__/$ntaskio/" -e "s/__NTASKS__/$ntask/" \
-			${nml/_lin/_quad} > $cy/quadnam/$conf.nam
-	elif echo $nml | grep -qE '_fp\.nam'
-	then
-		sed -e "s/__NCOMBFLEN__/1800000/" -e "s/__MP_TYPE__/2/" \
-			-e "s/__LOPT_SCALAR__/.TRUE./" -e "s/__MBX_SIZE__/1024000000/" \
-			-e "s/__NTASK_IO__/$ntaskio/" -e "s/__NTASKS__/$ntask/" \
-			${nml/_fp/_fc} > /tmp/fc.nam
-		sed -e "s/val_sitr/300./" -e "s/val_sipr/100000./" /tmp/fc.nam \
-			> $cy/fcnam/$conf.nam1
-		sed -e "s/val_sitr/350./" -e "s/val_sipr/100000./" /tmp/fc.nam \
-			> $cy/fcnam/$conf.nam2
-		sed -e "s/val_sitr/300./" -e "s/val_sipr/80000./" /tmp/fc.nam \
-			> $cy/fcnam/$conf.nam3
 	elif [ $conf = "L3_FPIN_HYD_MODEL_ARPPHYISBA" ]
 	then
-		sed -e "s/__NCOMBFLEN__/1800000/" -e "s/__MP_TYPE__/2/" \
-			-e "s/__LOPT_SCALAR__/.TRUE./" -e "s/__MBX_SIZE__/1024000000/" \
-			-e "s/__NTASK_IO__/$ntaskio/" -e "s/__NTASKS__/$ntask/" \
-			$nml > /tmp/in.nam
-		sed -e "s/NPOSTS(1)=-4/NPOSTS(1)=-3/" /tmp/in.nam > $cy/fcnam/$conf.nam1
-		sed -e "s/NPOSTS(1)=-4/NPOSTS(1)=-0/" -e "s/h3/t0/" \
-			-e "s/LEQLIMSAT=.TRUE./LEQLIMSAT=.FALSE./" /tmp/in.nam \
-			> $cy/fcnam/$conf.nam2
+		sed -rf val.tmp -e "s/NPOSTS(1)=-4/NPOSTS(1)=-3/" $nml > \
+			$cy/fcnam/$conf.nam1
+		sed -rf val.tmp -e "s/LEQLIMSAT=.TRUE./LEQLIMSAT=.FALSE./" -e "s/h3/t0/" \
+			-e "s/NPOSTS(1)=-4/NPOSTS(1)=-0/" $nml > $cy/fcnam/$conf.nam2
+		sed -rf val.tmp $nml > $cy/namelist/$conf.nam
+	elif echo $nml | grep -qE '_lin\.nam'
+	then
+		sed -rf val.tmp ${nml/_lin/_quad} > $cy/quadnam/$conf.nam
+		sed -rf val.tmp $nml > $cy/namelist/$conf.nam
+	elif echo $nml | grep -qE '_fp\.nam'
+	then
+		sed -rf val.tmp -e "s/val_sitr/300./" -e "s/val_sipr/100000./" \
+			${nml/_fp/_fc} > $cy/fcnam/$conf.nam1
+		sed -rf val.tmp -e "s/val_sitr/350./" -e "s/val_sipr/100000./" \
+			${nml/_fp/_fc} > $cy/fcnam/$conf.nam2
+		sed -rf val.tmp -e "s/val_sitr/300./" -e "s/val_sipr/80000./" \
+			${nml/_fp/_fc} > $cy/fcnam/$conf.nam3
+		sed -f val.tmp $nml > $cy/namelist/$conf.nam
+	elif echo $nml | grep -qE 'selnam_dila'
+	then
+		cp $nml $cy/namelist/$conf.nam
+	else
+		sed -rf val.tmp $nml > $cy/namelist/$conf.nam
 	fi
+
+	# conversion deltanam : suppression namelists vides et espaces
+	cat $cy/namelist/$conf.nam | tr -d '\t' | tr '\n' '\t' | sed -re 's:&\w+\s+/\s*::g' \
+		-e 's:\t+:\n:g' > $cy/deltanam/$conf.nam
 done < config/profil_table
+rm val.tmp
 
 echo "Déplacement/conversion selnam"
 grep -E "/.+\.selnam" old/$cy/jobs/* | grep -vE "selnam_(fp|dila)|\.diff" | \
 	sed -re 's:.+/(.+)\.sh.+/([^ ]+) +(.+):\1 \2 \3:' | \
-	sed -re 's:\w+\.selnam_exseg1$:EXSEG1.nam:' > info/selnam
-
+	sed -re 's:\w+\.selnam_(exseg1|sfex)$:EXSEG1.nam:' > info/selnam
+rm -f $cy/selnam/*
 while read conf fic selnam
 do
 	# peut arriver en double "conf.conf.selnam..."
@@ -156,7 +150,8 @@ done < info/selnam
 
 echo "Déplacement diffnam"
 grep -E "/.+\.selnam" old/$cy/jobs/* | grep -E "\.diff" | \
-	sed -re 's:.+/(.+)\.sh.+/([^ ]+) +(.+):\1 \3:' > $cy/difftable
+	sed -re 's:.+/(.+)\.sh.+/([^ ]+) +(.+):\1 \3:' | sort > $cy/difftable
+rm -f $cy/diffnam/*
 for fic in $(find old/$cy/namelist -name \*.diff)
 do
 	# petite erreur namelist 'CONV_PGD' 1 conf L3 AROMALP1300
@@ -166,7 +161,8 @@ done
 echo "Déplacement/conversion fpnam"
 grep -E '^ *\$E?CP.+/.+\.selnam_fp' old/$cy/jobs/* | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(.+):\1 \2 \3:' | \
-	sed -re 's:([^ ]+) \1\.:\1 arpege.:' > $cy/fptable
+	sed -re 's:([^ ]+) \1\.:\1 arpege.:' | sort > $cy/fptable
+rm -f $cy/fpnam/*
 while read conf ficout zzz
 do
 	fic=${ficout/arpege/$conf}
@@ -178,59 +174,64 @@ do
 		exit 1
 	fi
 
-	cp old/$cy/namelist/$fic $cy/fpnam/$fout
+	cp old/$cy/namelist/$fic $cy/fpnam/$fout || echo "Erreur $conf $fic" >&2
 done < $cy/fptable
 
 echo "Table analyses"
 grep -E '^ *\$E?CP.+/.+(EBAUCHE|ICM??.+INIT)$' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(.+):\1 \2 \3:' | \
-	grep -vE "_DFIBIAS_.+_analyse|_DFIINCR_.+_guess" > $cy/initable
+	grep -vE "_DFIBIAS_.+_analyse|_DFIINCR_.+_guess" | sort > $cy/initable
 
 echo "Table analyses surfex"
 grep -E '^ *\$E?CP.+/.+INIT\.sfx *$' old/$cy/jobs/* | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +.+INIT\.sfx:\1 \2:' \
-	> $cy/inisfxtable
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +.+INIT\.sfx:\1 \2:' | \
+	sort > $cy/inisfxtable
 
 echo "Table forcages"
 grep -E '^ *(\$E?CP|ln -\w*) (.+/)?.+ +ELS[AC].+' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *(\$E?CP|ln -\w*) (.+/)?(.+) +ELS.+:\1 \4:' | \
-	sed -re 's:_COUPL0+[^ ]*::' | uniq > $cy/coupltable
+	sed -re 's:_COUPL0+[^ ]*::' | sort -u > $cy/coupltable
 
 echo "Tables clim, clim fp, filtre, const, pgd et pgdfa"
 grep -E '^ *\$E?CP.+/.+ +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa) *$' \
-	old/$cy/jobs/*.sh | sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa):\1 \2 \3:' \
-	> $cy/climtable
+	old/$cy/jobs/*.sh | \
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa):\1 \2 \3:' |\
+	sort > $cy/climtable
 grep -E '^ *\$E?CP.+/.+ +const\.clim(\.\w+)+ *$' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(const\.clim(\.\w+)+):\1 \2 \3:' \
-	> $cy/climfptable
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(const\.clim(\.\w+)+):\1 \2 \3:' |\
+	sort > $cy/climfptable
 grep -E '^ *\$E?CP.+/.+ +matrix\.fil\.' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(matrix\.fil\.\w+):\1 \2 \3:' \
-	> $cy/filtertable
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(matrix\.fil\.\w+):\1 \2 \3:' |\
+	sort > $cy/filtertable
 grep -E '^ *\$E?CP.+/.+ +\w+\.(hdr|dir) *$' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(\w+\.(hdr|dir)):\1 \2 \3:' \
-	> $cy/constable
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(\w+\.(hdr|dir)):\1 \2 \3:' | \
+	sort > $cy/constable
 grep -E '^ *file_lfi=PGD\w+\.lfi *$' old/$cy/jobs/*PGDC*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *file_lfi=(PGD\w+\.lfi):\1 \2:' | \
 	sed -re 's:_PGDC_:_PGDS_:' > $cy/pgdtable
 grep -E '^ *\$E?CP +PGDFILE_.+\.fa +Neworog *$' old/$cy/jobs/*C923* | \
 	sed -re 's:.+/(.+)\.sh\: *\$CP +(PGDFILE_.+\.fa) +Neworog:\1 \2:' \
 	>> $cy/pgdtable
+sort $cy/pgdtable > pgd.tmp
+mv pgd.tmp $cy/pgdtable
 grep -E '\$CP +.+__CLIM_MODEL_(.+) *$' old/$cy/jobs/*C923*.sh | \
 	sed -re 's:.+/(.+)\.sh\:.+__CLIM_MODEL_(.+)_m.+:\1 \1 Const.Clim.01:' | \
 	sed -re 's:_C923_:_PGDS_:' -e 's:_SFEX::' > $cy/pgdfatable
 grep -E '\$CP +.+SURFEX_FILES/(.+) *$' old/$cy/jobs/*PGDI*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$CP +.+/SURFEX_FILES/(.+) *$:\1 \1 \2:' | \
 	sed -re 's:_PGDI_:_C923_:' >> $cy/pgdfatable
+sort $cy/pgdfatable > pgd.tmp
+mv pgd.tmp $cy/pgdfatable
 
 echo "Table IO Server"
 grep -E '^ *\$\{?IOPOLL}?' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$\{?IOPOLL}? *.*\-\-prefix +(\w+):\1 \2:' \
-	> $cy/ioservtable
+	sed -re 's:.+/(.+)\.sh\: *\$\{?IOPOLL}? *.*\-\-prefix +(\w+):\1 \2:' | \
+	sort > $cy/ioservtable
 
 echo "Diff tables"
 for fic in $cy/*table
 do
-	diff -Bbq $fic config
+	diff -Bbq $fic config || true
 done
 
 exit

@@ -43,6 +43,19 @@ guess and analysis files)
 "
 }
 
+logdiff()
+{
+	if [ $# -ne 2 ]
+	then
+		echo "usage: logdiff file1 file2" >&2
+		return 1
+	fi
+
+	spdiff $1 $2 | grep -vE '^$' | sed -re 's:^# +:STEP(s)\t:' -e 's: +$::' \
+		-e 's: {2,}([A-Z]+):\t\1:g' -e 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g' ||
+		true
+}
+
 jobwait()
 {
 	local jobid conf
@@ -68,10 +81,17 @@ jobwait()
 		[ $force -eq 0 ] && sacct -nPXj $jobid -o state | grep -vi COMPLETED &&
 			continue
 
-		[ "$ref" -a -s $ref/$conf/NODE.001_01 ] &&
-			grep -qi 'spectral norms' $ref/$conf/NODE.001_01 &&
-			spdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01 | \
-			sed -re 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g' -e 's:  +([A-Z]+):\t\1:g'
+		[ -z "$ref" ] && continue
+
+		if [ ! -s $ref/$conf/NODE.001_01 ]
+		then
+			echo "--> no ref log for conf $conf"
+			continue
+		fi
+
+		grep -qi 'spectral norms' $ref/$conf/NODE.001_01 ||
+			echo "no spectral norms" &&
+			logdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01
 	done < jobs.txt
 }
 
@@ -211,11 +231,20 @@ do
 
 	if [ -e $ddcy/$conf/jobOK ]
 	then
-		echo "--> job $conf.sh already succeeded"
-		[ "$ref" -a -s $ref/$conf/NODE.001_01 ] &&
-			grep -qi 'spectral norms' $ref/$conf/NODE.001_01 &&
-			spdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01 | \
-			sed -re 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g' -e 's:  +([A-Z]+):\t\1:g'
+		echo "--> job $conf already completed"
+		if [ "$ref" ]
+		then
+			if [ ! -s $ref/$conf/NODE.001_01 ]
+			then
+				echo "--> no ref log for conf $conf"
+				continue
+			fi
+
+			grep -qi 'spectral norms' $ref/$conf/NODE.001_01 ||
+				echo "no spectral norms" &&
+				logdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01
+		fi
+
 		continue
 	elif [ $force -eq 0 ] && ! grep -qE "^$conf$" $mitra/config/validconfs.txt
 	then
@@ -353,7 +382,7 @@ do
 	[ $nj -eq 0 ] && continue
 
 	jobid=$(cd $ddcy/$conf; sbatch $name.sh | tail -1 | awk '{print $NF}')
-	[ $verbose -eq 1 ] && echo "--> submitted job $jobid"
+	echo "--> job submitted for conf $conf - jobid: $jobid"
 	echo "$jobid $conf" >> jobs.txt
 	if [ $(wc -l jobs.txt | awk '{print $1}') -eq $nj ]
 	then
