@@ -213,7 +213,7 @@ then
 	ls -d $cycle >/dev/null
 fi
 
-cycle=$(cd $cycle;pwd)
+cycle=$(cd $cycle > /dev/null && pwd)
 ddcy=$DATA/$(basename $cycle)
 if [ "$ref" ] && [ ! -d $ref ]
 then
@@ -300,13 +300,13 @@ do
 	awk -v dd=$const/pgd '$1=="'$conf'" {printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' \
 		$cycle/constable > const.txt
 
-	awk -v dd=$const/clim '$1=="'$conf'" {printf("ln -sfv %s/%s %s\n",dd,$2,$3);}'\
+	awk -v dd=$const/clim '$1=="'$conf'" {printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' \
 		$cycle/climtable $cycle/climfptable $cycle/filtertable > clim.txt
 
 	awk -v dd=$const/coupling '$1=="'$conf'" {printf("lbc=%s/%s\n",dd,$2);}' \
 		$cycle/coupltable >> job.profile
 
-	awk -v dd=$cycle/fpnam '$1=="'$conf'" {printf("cp %s/%s %s\n",dd,$2,$3);}'\
+	awk -v dd=$cycle/fpnam '$1=="'$conf'" {printf("cp %s/%s %s\n",dd,$2,$3);}' \
 		$cycle/fptable > fpos.txt
 	fpnam=$(cut -d " " -f3 fpos.txt | sed -re 's:[0-9]+$::' | uniq)
 	[ "$fpnam" ] && echo "fpnam=$fpnam" >> job.profile
