@@ -133,8 +133,12 @@ then
 		xpnam --dfile="${diffnam}_CONVPGD.selnam_exseg1" --inplace $fout
 
 		echo "Launch MPI job"
-		mpiexe $bin > mpipgd.out 2> mpipgd.err
-		find -type f -newer $fout | grep -vE $lstRE | xargs ls -l
+		if [ ! -f mpipgdOK ]
+		then
+			mpiexe $bin > mpipgd.out 2> mpipgd.err
+			find -type f -newer $fout | grep -vE $lstRE > mpipgdOK
+			cat mpipgdOK | xargs ls -l
+		fi
 
 		# reset initial namelists
 		cp $nam fort.4
@@ -147,8 +151,12 @@ then
 		xpnam --dfile="${diffnam}_CONVPREP.nam" --inplace fort.4
 
 		echo "Launch MPI job"
-		mpiexe $bin > mpiprep.out 2> mpiprep.err
-		find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
+		if [ ! -f mpiprepOK ]
+		then
+			mpiexe $bin > mpiprep.out 2> mpiprep.err
+			find -type f -newer fort.4 | grep -vE $lstRE > mpiprepOK
+			cat mpiprepOK | xargs ls -l
+		fi
 
 		# reset initial namelists
 		cp $nam fort.4
@@ -188,8 +196,8 @@ if [ ! -f mpiOK ]
 then
 	touch fort.4
 	mpiexe $bin > mpi.out 2> mpi.err
-	find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
-	touch mpiOK
+	find -type f -newer fort.4 | grep -vE $lstRE > mpiOK
+	cat mpiOK | xargs ls -l
 fi
 
 if [ "$fcnam" ]
@@ -203,10 +211,10 @@ then
 			echo ". job with namelist $fnam"
 			cp $fnam fort.4
 			mpiexe $bin >> mpifc.out 2>> mpifc.err
-			find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
+			find -type f -newer fort.4 | grep -vE $lstRE >> mpifcOK
 		done
 
-		touch mpifcOK
+		cat mpifcOK | xargs ls -l
 	fi
 
 	cp $nam fort.4
@@ -221,8 +229,8 @@ then
 		mv NODE.001_01 ICMSHARPE+* start
 		touch fort.4
 		mpiexe $bin > mpidiff.out 2> mpidiff.err
-		find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
-		touch mpidiffOK
+		find -type f -newer fort.4 | grep -vE $lstRE > mpidiffOK
+		cat mpidiffOK | xargs ls -l
 	fi
 
 	echo "Compare last forecast step:"
@@ -239,8 +247,9 @@ then
 		touch ioOK.tmp
 		io_poll --prefix ICMSH
 		[ "$fpnam" ] && io_poll --prefix PF
-		find -type f -newer ioOK.tmp
+		find -type f -newer ioOK.tmp > ioOK.tmp
 		mv ioOK.tmp ioOK
+		cat ioOK | xargs ls -l
 	fi
 fi
 

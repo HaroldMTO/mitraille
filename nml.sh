@@ -69,18 +69,25 @@ mkdir -p $cy/namelist $cy/quadnam $cy/selnam $cy/diffnam $cy/fpnam $cy/fcnam \
 	$cy/deltanam
 
 echo "Valeurs fixes en namelist, delta namelist"
-rm -f info/dfitable $cy/namelist/* $cy/fcnam/* $cy/deltanam/*
+rm -f $cy/namelist/* $cy/fcnam/* $cy/deltanam/*
 
 while read conf bin mem wall cpu ntaskio ntaskt nnodes nthread
 do
+	echo $conf | grep -q '#conf' && continue
+
 	nml=old/$cy/namelist/$conf.nam
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf/_DFIBIAS_/_TSTDFI_}.nam
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf/_DFIINCR_/_TSTDFI_}.nam
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf}_lin.nam
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf}_fp.nam
 	[ ! -s $nml ] && nml=old/$cy/namelist/${conf}.selnam_dila
-	#[ ! -s $nml ] && nml=old/$cy/namelist/${conf}.selnam_pgd
-	[ ! -s $nml ] && continue
+	[ ! -s $nml ] && nml=old/$cy/namelist/${conf}.selnam_pgd
+
+	if [ ! -s $nml ]
+	then
+		[ -s old/$cy/jobs/$conf.sh ] && echo "--> pas de namelist $conf"
+		continue
+	fi
 
 	ntask=$((ntaskt-ntaskio))
 
@@ -97,12 +104,10 @@ do
 	then
 		sed -rf val.tmp -e "s/_lbias_/.TRUE./" -e "s/_lincr_/.FALSE./" $nml > \
 			$cy/namelist/$conf.nam
-		echo $conf >> info/dfitable
 	elif echo $conf | grep -qE '_DFIINCR_'
 	then
 		sed -rf val.tmp -e "s/_lbias_/.FALSE./" -e "s/_lincr_/.TRUE./" $nml > \
 			$cy/namelist/$conf.nam
-		echo $conf >> info/dfitable
 	elif [ $conf = "L3_FPIN_HYD_MODEL_ARPPHYISBA" ]
 	then
 		sed -rf val.tmp -e "s/NPOSTS(1)=-4/NPOSTS(1)=-3/" $nml > \
@@ -123,7 +128,7 @@ do
 		sed -rf val.tmp -e "s/val_sitr/300./" -e "s/val_sipr/80000./" \
 			${nml/_fp/_fc} > $cy/fcnam/$conf.nam3
 		sed -f val.tmp $nml > $cy/namelist/$conf.nam
-	elif echo $nml | grep -qE 'selnam_dila'
+	elif echo $nml | grep -qE 'selnam_(dila|pgd)'
 	then
 		cp $nml $cy/namelist/$conf.nam
 	else
@@ -137,7 +142,7 @@ done < config/profil_table
 rm val.tmp
 
 echo "Déplacement/conversion selnam"
-grep -E "/.+\.selnam" old/$cy/jobs/* | grep -vE "selnam_(fp|dila)|\.diff" | \
+grep -E "/.+\.selnam" old/$cy/jobs/* | grep -vE "selnam_(fp|dila|pgd)|\.diff" |\
 	sed -re 's:.+/(.+)\.sh.+/([^ ]+) +(.+):\1 \2 \3:' | \
 	sed -re 's:\w+\.selnam_(exseg1|sfex)$:EXSEG1.nam:' > info/selnam
 rm -f $cy/selnam/*
@@ -149,8 +154,6 @@ do
 done < info/selnam
 
 echo "Déplacement diffnam"
-grep -E "/.+\.selnam" old/$cy/jobs/* | grep -E "\.diff" | \
-	sed -re 's:.+/(.+)\.sh.+/([^ ]+) +(.+):\1 \3:' | sort > $cy/difftable
 rm -f $cy/diffnam/*
 for fic in $(find old/$cy/namelist -name \*.diff)
 do
@@ -236,8 +239,8 @@ done
 
 exit
 cd ~saez/mitraille/cy46t1
-grep -lE '\<COMPLETED\>' */O* | sed -re 's:.+/O(.+)\.o.+:\1:' | sort -u \
-	> config/validconfs.txt
+grep -lE '\<COMPLETED\>' ~saez/mitraille/cy46/*/O* | \
+	sed -re 's:.+/O(.+)\.o.+:\1:' | sort -u > ~/tmp/validconfs.txt
 
 for fic in mitraille_*/O*.o*
 do

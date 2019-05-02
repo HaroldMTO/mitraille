@@ -58,7 +58,7 @@ then
 	grep -f $varenv env.txt || echo "--> none"
 fi
 
-echo "Getting main namelist $selnam"
+echo "Getting main namelist $nam"
 cp $nam fort.4
 
 echo "Launch MPI job"

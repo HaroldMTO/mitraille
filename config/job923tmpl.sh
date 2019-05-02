@@ -60,10 +60,10 @@ then
 	grep -f $varenv env.txt || echo "--> none"
 fi
 
-echo "Linking clims for Surfex (if required)" # TAG CLIM
-
-rm -f Const.Clim # error otherwise
+echo "Linking relief files"
 lnv $c923/RELIEF_G/GTOPT030/* .
+
+echo "Linking clims for Surfex (if required)" # TAG CLIM
 
 if [ "$pgd" ]
 then
@@ -75,13 +75,19 @@ then
 	cp $pgdfa Neworog
 fi
 
+rm -f Const.Clim # error otherwise
+
 if [ "$quadnam" ]
 then
 	echo "Launch MPI 'quad' job"
 	sed -re 's:^ *N923=[0-9]:N923=1:' $quadnam > fort.4
-	mpiexe $bin > mpiquad.out 2> mpiquad.err
-	find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
-	mv Const.Clim Neworog # ???
+	if [ ! -f mpiquadOK ]
+	then
+		mpiexe $bin > mpiquad.out 2> mpiquad.err
+		find -type f -newer fort.4 | grep -vE $lstRE > mpiquadOK
+		cat mpiquadOK | xargs ls -l
+		mv Const.Clim Neworog # ???
+	fi
 fi
 
 echo "Launch MPI 'lin' job 1"
@@ -112,7 +118,7 @@ lnv $c923/CLIM_G/version2/i3e/rel_GL .
 
 rm -f mpi[45689].*
 
-for mm in 01 02 03 04 05 06 07 08 09 10 11 12
+for mm in 01 02 06 12
 do
 	echo "Clim - month $mm"
 	cp Const.Clim.$mm Const.Clim

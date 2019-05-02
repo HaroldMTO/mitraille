@@ -44,10 +44,10 @@ rm -f core.*
 
 echo "Setting job profile" #TAG PROFILE
 
-if [ -z "$selnam" -o -z "$bin" -o -z "$ecoclimap" ]
+if [ -z "$nam" -o -z "$bin" -o -z "$ecoclimap" ]
 then
 	echo "Error: mandatory variables not set
-selnam: '$selnam'
+nam: '$nam'
 bin: '$bin'
 ecoclimap: '$ecoclimap'
 " >&2
@@ -60,16 +60,21 @@ then
 	grep -f $varenv env.txt || echo "--> none"
 fi
 
-echo "Linking constants for Surfex" # TAG CONST
+echo "Linking Ecoclimap files"
 lnv $ecoclimap/* .
 
-echo "Getting namelist $selnam"
-nam=$(echo $selnam | sed -re 's:.+\.([^.]+\.nam):\1:')
-cp $selnam $nam
+echo "Linking constants for Surfex" # TAG CONST
+
+echo "Getting namelist $nam"
+cp $nam OPTIONS.nam
 
 echo "Launch MPI job"
-mpiexe $bin > mpi.out 2> mpi.err
-find -type f -newer $nam | grep -vE $lstRE | xargs ls -l
+if [ ! -f mpiOK ]
+then
+	mpiexe $bin > mpi.out 2> mpi.err
+	find -type f -newer OPTIONS.nam | grep -vE $lstRE > mpiOK
+	cat mpiOK | xargs ls -l
+fi
 
 if [ -n "$pgd" -a -n "$pgdfa" ]
 then
@@ -78,8 +83,12 @@ then
 	$LFITOOLS faempty $pgdfa test.fa
 	$sfxtools sfxlfi2fa --sfx-fa--file test.fa --sfx-lfi-file $pgd
 
-	mpiexe1 $sfxtools > mpisfx.out 2> mpisfx.err
-	find -type f -newer test.fa | grep -vE $lstRE | xargs ls -l
+	if [ ! -f mpisfxOK ]
+	then
+		mpiexe1 $sfxtools > mpisfx.out 2> mpisfx.err
+		find -type f -newer test.fa | grep -vE $lstRE > mpisfxOK
+		cat mpisfxOK | xargs ls -l
+	fi
 
 	$LFITOOLS testfa < $lfi2fa
 fi

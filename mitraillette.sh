@@ -274,10 +274,6 @@ do
 
 	[ $verbose -ne 0 ] && echo "Setting conf $conf $nnodes $wall' $bin"
 
-	# option with deltanams:
-	# cp $cycle/nulnam.f90 $ddcy/$conf.nam
-	# xpnam --dfile $cycle/deltanam/$conf.nam -i $ddcy/$conf.nam
-
 	cat > job.profile <<-EOF
 		export OMP_NUM_THREADS=$nthread
 		export LFITOOLS=$pack/bin/LFITOOLS
