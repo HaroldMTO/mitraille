@@ -177,7 +177,7 @@ do
 		exit 1
 	fi
 
-	cp old/$cy/namelist/$fic $cy/fpnam/$fout || echo "Erreur $conf $fic" >&2
+	cp old/$cy/namelist/$fic $cy/fpnam/$ficout || echo "Erreur $conf $fic" >&2
 done < $cy/fptable
 
 echo "Table analyses"
