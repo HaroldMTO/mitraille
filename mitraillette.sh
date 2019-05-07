@@ -13,16 +13,16 @@ Description:
 	Test a list of IFS, ARPEGE, ALADIN, AROME, ALARO, PGD, FP,... configurations
 
 Usage:
-	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-o opt] [-noenv] \
-[-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] \
-[-force] [-v]
+	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-opt opt] [-noenv] \
+[-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] [-force] \
+[-v]
 
 Arguments:
 	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to find \
 IFS binaries
 	rcfile: resource file for a model job
 	-conf: filter for configuration name, as referenced in profil_table
-	-o: pack option, according to pack naming (default: '2y')
+	-opt: pack option, according to pack naming (default: '2y')
 	-noenv: do not export environment in job scripts
 	-b: filter for binary, setting and running jobs only for binary 'bin'
 	-t: filter for maximum time execution
@@ -128,7 +128,7 @@ do
 			conf0=$2
 			shift
 			;;
-		-o)
+		-opt)
 			opt=$2
 			shift
 			;;
@@ -183,18 +183,19 @@ fi
 
 . $rcfile
 
-if [ -z "$packs" -o -z "$const" -o -z "$utils" ]
+if [ -z "$packs" -o -z "$const" -o -z "$utils" -o -z "$dirout" ]
 then
 	printf "Error: rc variables not set
+dirout: '$dirout'
 const: '$const'
 $packs: '$packs'
 utils: '$utils'
 " >&2
 	exit 1
-elif [ ! -d $packs -o ! -d $const ]
+elif [ ! -d $packs -o ! -d $const -o ! $dirout ]
 then
 	printf "Error: mandatory directories missing" >&2
-	ls -d $packs $const
+	ls -d $packs $const $dirout
 fi
 
 pack=$(find $packs -maxdepth 1 -type d -follow -name $(basename $cycle)\*.$opt.pack | \
@@ -214,10 +215,10 @@ then
 fi
 
 cycle=$(cd $cycle > /dev/null && pwd)
-ddcy=$DATA/$(basename $cycle)
+ddcy=$dirout/$(basename $cycle)
 if [ "$ref" ] && [ ! -d $ref ]
 then
-	ref=$DATA/$ref
+	ref=$dirout/$ref
 	ls -d $ref >/dev/null
 fi
 
