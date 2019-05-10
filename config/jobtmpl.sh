@@ -254,19 +254,19 @@ then
 fi
 
 echo "Rename files"
-for fic in $(find -maxdepth 1 -name \*ARPE+\* | grep -E 'ICMSH|PF|DHF(DL|ZO)')
+for fic in $(find -maxdepth 1 -name \*ARPE\* | \
+	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*+[0-9]{4}')
 do
-	prefix=$(echo $fic | sed -re 's:\./(.+)ARPE.*\+[0-9]+(\.sfx)?:\1:')
+	ech=$(echo $fic | sed -re 's:.+\+0{,3}([0-9]{1,})(\.sfx)?:\1:')
+	prefix=$(echo $fic | sed -re 's:\./(.+)ARPE.+:\1:')
 	case $prefix in
 		ICMSH) ftype=HIST;;
 		DHFDL) ftype=DDHFDL;;
 		DHFZO) ftype=DDHFZO;;
-		PF) ftype=$(echo $fic | sed -re 's:PFARPE(.+)\+[0-9]+:\1:');;
+		PF) ftype=$(echo $fic | sed -re 's:\./PFARPE(.+)\+[0-9]+.*:\1:');;
 	esac
 
-	ech=$(echo $fic | sed -re 's:.+\+0{,3}([0-9]{1,})(\.sfx)?:\1:')
-
-	if [ "$ios" ] && [ $ftype = "HIST" -o $ftype = "PF" ]
+	if [ "$ios" ] && [ $prefix = "ICMSH" -o $prefix = "PF" ]
 	then
 		lfi_move -pack -force $fic $(printf "ARPE.%04d.$ftype\n" $ech)
 	else
