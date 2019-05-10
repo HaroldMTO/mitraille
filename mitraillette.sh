@@ -89,9 +89,12 @@ jobwait()
 			continue
 		fi
 
-		grep -qi 'spectral norms' $ref/$conf/NODE.001_01 ||
-			echo "no spectral norms" &&
+		if grep -qi 'spectral norms' $ref/$conf/NODE.001_01
+		then
 			logdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01
+		else
+			echo "no spectral norms"
+		fi
 	done < jobs.txt
 }
 
@@ -241,9 +244,12 @@ do
 				continue
 			fi
 
-			grep -qi 'spectral norms' $ref/$conf/NODE.001_01 ||
-				echo "no spectral norms" &&
+			if grep -qi 'spectral norms' $ref/$conf/NODE.001_01
+			then
 				logdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01
+			else
+				echo "no spectral norms"
+			fi
 		fi
 
 		continue
