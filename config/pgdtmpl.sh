@@ -31,7 +31,6 @@ export KMP_STACKSIZE=2G
 # additional
 export EC_MPI_ATEXIT=0
 export EC_PROFILE_HEAP=0
-unset DATA
 env > env.txt
 
 lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|NODE|core|std(out|err))\."

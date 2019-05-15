@@ -23,23 +23,33 @@ IFS binaries
 	rcfile: resource file for a model job
 	-conf: filter for configuration name, as referenced in profil_table
 	-opt: pack option, according to pack naming (default: '2y')
-	-noenv: do not export environment in job scripts
+	-noenv: do not export (current) environment in job scripts. Note: \
+environment is set from shell's startup, as login shell (-> .profile).
 	-b: filter for binary, setting and running jobs only for binary 'bin'
 	-t: filter for maximum time execution
 	-nn: filter for maximum nnodes SLURM allocation
 	-omp: filter for maximum nomp threads
 	-nj: submit at most njobs jobs at a time (defaults to 0: no jobs running)
 	-ref: path to jobs reference output
-	-force: keep on submitting jobs even if any previously submitted jobs failed
+	-force: keep on submitting jobs even if any previously submitted job failed
 	-v: verbose mode
 
 Details:
-	rcfile is sourced and must set the following variables:
+	rcfile is sourced and must set the following (interactive) variables:
+		- dirout: path to root directory of job execution
 		- const: path to constant files (constants, clims, coupling files, \
 guess and analysis files)
-		- packs: path to CYCLE packs binary files
-		- utils: path to IO server tool 'io_poll'
-	Filters act on both jobs setting and execution
+		- packs: path to packs, one of them corresponding to CYCLE and opt
+	These variables are used in here as shell commands and so do not need to be \
+in environment.
+
+	Batch jobs need variable PATH contain path(s) to xpnam and io_poll. Any \
+other environment variable
+
+	Filters act on both jobs setting and execution.
+
+Dependencies:
+	None
 "
 }
 
@@ -186,13 +196,12 @@ fi
 
 . $rcfile
 
-if [ -z "$packs" -o -z "$const" -o -z "$utils" -o -z "$dirout" ]
+if [ -z "$packs" -o -z "$const" -o -z "$dirout" ]
 then
 	printf "Error: rc variables not set
 dirout: '$dirout'
 const: '$const'
-$packs: '$packs'
-utils: '$utils'
+packs: '$packs'
 " >&2
 	exit 1
 elif [ ! -d $packs -o ! -d $const -o ! $dirout ]
@@ -284,7 +293,6 @@ do
 	cat > job.profile <<-EOF
 		export OMP_NUM_THREADS=$nthread
 		export LFITOOLS=$pack/bin/LFITOOLS
-		PATH=$PATH:$utils
 		varenv=$cycle/varenv.txt
 		nam=$cycle/namelist/$conf.nam
 		bin=$pack/bin/$bin

@@ -30,8 +30,6 @@ export KMP_STACKSIZE=2G
 # additional
 export EC_MPI_ATEXIT=0
 export EC_PROFILE_HEAP=0
-export LD_LIBRARY_PATH=~martinezs/public/opt/i-13.1.4.183/lib/fftw-3.3.4/lib
-unset DATA
 env > env.txt
 
 lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|NODE|core|std(out|err))\."

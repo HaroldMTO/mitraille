@@ -27,11 +27,9 @@ export DR_HOOK_IGNORE_SIGNALS=-1
 export DR_HOOK_SILENT=1
 export EC_PROFILE_HEAP=0
 export KMP_STACKSIZE=2G
-export LD_LIBRARY_PATH=~martinezs/public/opt/i-13.1.4.183/lib/fftw-3.3.4/lib
 
 # additional
 export EC_MPI_ATEXIT=0
-unset DATA
 env > env.txt
 
 lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|NODE|core|std(out|err))\."
@@ -237,6 +235,16 @@ then
 	fcst=$(ls -1 ICMSHARPE+* | sort | tail -1)
 	DR_HOOK=0 DR_HOOK_NOT_MPI=1 $LFITOOLS lfidiff --lfi-file-1 start/$fcst \
 		--lfi-file-2 $fcst
+elif echo $nam | grep -qE '/GM_FCTI_HYD_SL2_VFE_ARPPHYISBA_SLT_REST\.nam'
+then
+	echo "Launch MPI job with restart (special ARPEGE/ISBA conf)"
+	if [ ! -f mpidiffOK ]
+	then
+		touch fort.4
+		mpiexe $bin > mpidiff.out 2> mpidiff.err
+		find -type f -newer fort.4 | grep -vE $lstRE > mpidiffOK
+		cat mpidiffOK | xargs ls -l
+	fi
 fi
 
 if [ "$ios" ]
