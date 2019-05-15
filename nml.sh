@@ -187,33 +187,33 @@ do
 done < $cy/fptable
 
 echo "Table analyses"
-grep -E '^ *\$E?CP +.+(EBAUCHE|ICM??.+INIT) *$' old/$cy/jobs/*.sh | \
+grep -E '^ *\$E?CP +.+/.+ (EBAUCHE|ICM.+INIT) *$' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(.+):\1 \2 \3:' | \
-	grep -vE "_DFIBIAS_.+_analyse|_DFIINCR_.+_guess" | sort > $cy/initable
+	grep -vE "_DFI(BIAS_.+_analyse|INCR_.+_guess)" | sort > $cy/initable
 
 echo "Table analyses surfex"
 grep -E '^ *\$E?CP +.+INIT\.sfx *$' old/$cy/jobs/* | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP +(.+/)?([^ ]+) +.+INIT\.sfx:\1 \3:' | \
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +.+INIT\.sfx *:\1 \2:' | \
 	sort > $cy/inisfxtable
 
 echo "Table forcages"
-grep -E '^ *(\$E?CP|ln -\w*) (.+/)?.+ +ELS[AC].+' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *(\$E?CP|ln -\w*) (.+/)?(.+) +ELS.+:\1 \4:' | \
-	sed -re 's:_COUPL0+[^ ]*::' | sort -u > $cy/coupltable
+grep -E '^ *(\$E?CP|ln -\w+) .+ +ELS[AC].+' old/$cy/jobs/*.sh | \
+	sed -re 's:.+/(.+)\.sh\: *(\$E?CP|ln -\w+) (.+/?.+) +ELS.+:\1 \3:' | \
+	sed -re 's:_COUPL0+[^ ]*::' -e 's: .+/: PATH/:' | sort -u > $cy/coupltable
 
 echo "Tables clim, clim fp, filtre, const, pgd et pgdfa"
 grep -E '^ *\$E?CP +.+ +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa) *$' \
 	old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP +(.+/)?([^ ]+) +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa):\1 \3 \4:' |\
-	sort > $cy/climtable
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP +([^ ]+) +(.+) *$:\1 \2 \3:' | \
+	sed -re 's: .+/: PATH/:' | sort > $cy/climtable
 grep -E '^ *\$E?CP +.+ +const\.clim(\.\w+)+ *$' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(const\.clim(\.\w+)+):\1 \2 \3:' |\
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(.+) *$:\1 \2 \3:' |\
 	sort > $cy/climfptable
 grep -E '^ *\$E?CP +.+ +matrix\.fil\.' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(matrix\.fil\.\w+):\1 \2 \3:' |\
 	sort > $cy/filtertable
 grep -E '^ *\$E?CP +.+ +\w+\.(hdr|dir) *$' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(\w+\.(hdr|dir)):\1 \2 \3:' | \
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(.+\.(hdr|dir)):\1 \2 \3:' | \
 	sort > $cy/constable
 grep -E '^ *file_lfi=PGD\w+\.lfi *$' old/$cy/jobs/*PGDC*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *file_lfi=(PGD\w+\.lfi):\1 \2:' | \
@@ -234,7 +234,7 @@ mv pgd.tmp $cy/pgdfatable
 
 echo "Table IO Server"
 grep -E '^ *\$\{?IOPOLL}?' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$\{?IOPOLL}? *.*\-\-prefix +(\w+):\1 \2:' | \
+	sed -re 's:.+/(.+)\.sh\: *\$\{?IOPOLL}? *.*\-\-prefix +(.+):\1 \2:' | \
 	sort > $cy/ioservtable
 
 echo "Diff tables"
