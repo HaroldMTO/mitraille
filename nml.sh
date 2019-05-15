@@ -165,6 +165,12 @@ echo "Déplacement/conversion fpnam"
 grep -E '^ *\$E?CP.+/.+\.selnam_fp' old/$cy/jobs/* | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(.+):\1 \2 \3:' | \
 	sed -re 's:([^ ]+) \1\.:\1 arpege.:' | sort > $cy/fptable
+echo "L3_FPOF_HYD_GPLALON_OPE2_ARPPHYISBA alaro.selnam_fp_0 sel_0" >> $cy/fptable
+if [ ! -s alaro.selnam_fp_0 ]
+then
+	cp old/$cy/namelist/L3_FPOF_HYD_GPLALON_OPE2_ARPPHYISBA.nam \
+		old/$cy/namelist/alaro.selnam_fp_0
+fi
 rm -f $cy/fpnam/*
 while read conf ficout zzz
 do
@@ -181,13 +187,13 @@ do
 done < $cy/fptable
 
 echo "Table analyses"
-grep -E '^ *\$E?CP.+/.+(EBAUCHE|ICM??.+INIT)$' old/$cy/jobs/*.sh | \
+grep -E '^ *\$E?CP +.+(EBAUCHE|ICM??.+INIT) *$' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(.+):\1 \2 \3:' | \
 	grep -vE "_DFIBIAS_.+_analyse|_DFIINCR_.+_guess" | sort > $cy/initable
 
 echo "Table analyses surfex"
-grep -E '^ *\$E?CP.+/.+INIT\.sfx *$' old/$cy/jobs/* | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +.+INIT\.sfx:\1 \2:' | \
+grep -E '^ *\$E?CP +.+INIT\.sfx *$' old/$cy/jobs/* | \
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP +(.+/)?([^ ]+) +.+INIT\.sfx:\1 \3:' | \
 	sort > $cy/inisfxtable
 
 echo "Table forcages"
@@ -196,18 +202,18 @@ grep -E '^ *(\$E?CP|ln -\w*) (.+/)?.+ +ELS[AC].+' old/$cy/jobs/*.sh | \
 	sed -re 's:_COUPL0+[^ ]*::' | sort -u > $cy/coupltable
 
 echo "Tables clim, clim fp, filtre, const, pgd et pgdfa"
-grep -E '^ *\$E?CP.+/.+ +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa) *$' \
+grep -E '^ *\$E?CP +.+ +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa) *$' \
 	old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa):\1 \2 \3:' |\
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP +(.+/)?([^ ]+) +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa):\1 \3 \4:' |\
 	sort > $cy/climtable
-grep -E '^ *\$E?CP.+/.+ +const\.clim(\.\w+)+ *$' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(const\.clim(\.\w+)+):\1 \2 \3:' |\
+grep -E '^ *\$E?CP +.+ +const\.clim(\.\w+)+ *$' old/$cy/jobs/*.sh | \
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(const\.clim(\.\w+)+):\1 \2 \3:' |\
 	sort > $cy/climfptable
-grep -E '^ *\$E?CP.+/.+ +matrix\.fil\.' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(matrix\.fil\.\w+):\1 \2 \3:' |\
+grep -E '^ *\$E?CP +.+ +matrix\.fil\.' old/$cy/jobs/*.sh | \
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(matrix\.fil\.\w+):\1 \2 \3:' |\
 	sort > $cy/filtertable
-grep -E '^ *\$E?CP.+/.+ +\w+\.(hdr|dir) *$' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(\w+\.(hdr|dir)):\1 \2 \3:' | \
+grep -E '^ *\$E?CP +.+ +\w+\.(hdr|dir) *$' old/$cy/jobs/*.sh | \
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(\w+\.(hdr|dir)):\1 \2 \3:' | \
 	sort > $cy/constable
 grep -E '^ *file_lfi=PGD\w+\.lfi *$' old/$cy/jobs/*PGDC*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *file_lfi=(PGD\w+\.lfi):\1 \2:' | \
