@@ -18,8 +18,8 @@ Usage:
 [-v]
 
 Arguments:
-	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to find \
-IFS binaries
+	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to \
+find IFS binaries
 	rcfile: resource file for a model job
 	-conf: filter for configuration name, as referenced in profil_table
 	-opt: pack option, according to pack naming (default: '2y')
@@ -31,6 +31,8 @@ environment is set from shell's startup, as login shell (-> .profile).
 	-omp: filter for maximum nomp threads
 	-nj: submit at most njobs jobs at a time (defaults to 0: no jobs running)
 	-ref: path to jobs reference output
+	-hpc: let job conf completion and comparison (ifever asked for) being \
+looked for on HPC named MACHINE as an alternative to job local directory
 	-force: keep on submitting jobs even if any previously submitted job failed
 	-v: verbose mode
 
@@ -40,8 +42,8 @@ Details:
 		- const: path to constant files (constants, clims, coupling files, \
 guess and analysis files)
 		- packs: path to packs, one of them corresponding to CYCLE and opt
-	These variables are used in here as shell commands and so do not need to be \
-in environment.
+	These variables are used in here as shell commands and so do not need to \
+be in environment.
 
 	Batch jobs need variable PATH contain path(s) to xpnam and io_poll. Any \
 other environment variable
@@ -55,15 +57,28 @@ Dependencies:
 
 logdiff()
 {
-	if [ $# -ne 2 ]
+	if [ ! -e $ref/$conf/jobOK -o ! -s $ref/$conf/NODE.001_01 ] && [ "$hpc" ]
 	then
-		echo "usage: logdiff file1 file2" >&2
-		return 1
+		mkdir -p $ref/$conf
+		scp -q $hpc:$ref/$conf/jobOK $hpc:$ref/$conf/NODE.001_01 $ref/$conf \
+			2>/dev/null || true
 	fi
 
-	spdiff $1 $2 | grep -vE '^$' | sed -re 's:^# +:STEP(s)\t:' -e 's: +$::' \
-		-e 's: {2,}([A-Z]+):\t\1:g' -e 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g' ||
-		true
+	if [ ! -e $ref/$conf/jobOK -o ! -s $ref/$conf/NODE.001_01 ]
+	then
+		echo "--> no ref log (jobOK + NODE.001_01) for conf $conf"
+		return
+	fi
+
+	if ! grep -qi 'spectral norms' $ref/$conf/NODE.001_01
+	then
+		echo "--> no spectral norms"
+		return
+	fi
+
+	spdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01 | grep -vE '^$' | \
+		sed -re 's:^# +:STEP(s)\t:' -e 's: +$::' -e 's: {2,}([A-Z]+):\t\1:g' \
+		-e 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g'
 }
 
 jobwait()
@@ -93,18 +108,7 @@ jobwait()
 
 		[ -z "$ref" ] && continue
 
-		if [ ! -s $ref/$conf/NODE.001_01 ]
-		then
-			echo "--> no ref log for conf $conf"
-			continue
-		fi
-
-		if grep -qi 'spectral norms' $ref/$conf/NODE.001_01
-		then
-			logdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01
-		else
-			echo "no spectral norms"
-		fi
+		logdiff
 	done < jobs.txt
 }
 
@@ -123,6 +127,7 @@ nj=0
 ref=""
 verbose=0
 force=0
+hpc=""
 
 [ $# -eq 0 ] && help=1
 
@@ -168,6 +173,10 @@ do
 			;;
 		-ref)
 			ref=$2
+			shift
+			;;
+		-hpc)
+			hpc=$2
 			shift
 			;;
 		-force) force=1;;
@@ -228,6 +237,17 @@ fi
 
 cycle=$(cd $cycle > /dev/null && pwd)
 ddcy=$dirout/$(basename $cycle)
+
+if [ "$hpc" ]
+then
+	[ -z "$HOSTNAME" ] && echo "Info: no variable HOSTNAME to compare to"
+	if [ $hpc = "${HOSTNAME/login*/}" ]
+	then
+		echo "Info: alternative HPC is current one (${HOSTNAME/login*/})"
+		hpc=""
+	fi
+fi
+
 if [ "$ref" ] && [ ! -d $ref ]
 then
 	ref=$dirout/$ref
@@ -242,24 +262,17 @@ do
 	[ -n "$conf0" ] && echo $conf | grep -qvE "$conf0" && continue
 	[ $wall -gt $time -o $nnodes -gt $nn -o $nthread -gt $nomp ] && continue
 
+	if [ ! -e $ddcy/$conf/jobOK ] && [ "$hpc" ]
+	then
+		mkdir -p $ddcy/$conf
+		scp -q $hpc:$ddcy/$conf/jobOK $hpc:$ddcy/$conf/NODE.001_01 $ddcy/$conf \
+			2>/dev/null || true
+	fi
+
 	if [ -e $ddcy/$conf/jobOK ]
 	then
 		echo "--> job $conf already completed"
-		if [ "$ref" ]
-		then
-			if [ ! -s $ref/$conf/NODE.001_01 ]
-			then
-				echo "--> no ref log for conf $conf"
-				continue
-			fi
-
-			if grep -qi 'spectral norms' $ref/$conf/NODE.001_01
-			then
-				logdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01
-			else
-				echo "no spectral norms"
-			fi
-		fi
+		[ "$ref" ] && logdiff
 
 		continue
 	elif [ $force -eq 0 ] && ! grep -qE "^$conf$" $mitra/config/validconfs.txt
@@ -302,17 +315,21 @@ do
 	awk '$1=="'$conf'" {printf("pgdfa=../%s/%s\n",$2,$3);}' $cycle/pgdfatable \
 		>> job.profile
 
-	awk -v dd=$const/analyses '$1=="'$conf'" {printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' \
-		$cycle/initable > init.txt
+	awk -v dd=$const/analyses '$1=="'$conf'" {
+		printf("ln -sfv %s/%s %s\n",dd,$2,$3);
+		}' $cycle/initable > init.txt
 
-	awk -v dd=$const/anasurfex '$1=="'$conf'" {printf("initsfx=%s/%s\n",dd,$2);}' \
-		$cycle/inisfxtable >> job.profile
+	awk -v dd=$const/anasurfex '$1=="'$conf'" {
+		printf("initsfx=%s/%s\n",dd,$2);
+		}' $cycle/inisfxtable >> job.profile
 
-	awk -v dd=$const/pgd '$1=="'$conf'" {printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' \
-		$cycle/constable > const.txt
+	awk -v dd=$const/pgd '$1=="'$conf'" {
+		printf("ln -sfv %s/%s %s\n",dd,$2,$3);
+		}' $cycle/constable > const.txt
 
-	awk -v dd=$const/clim '$1=="'$conf'" {printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' \
-		$cycle/climtable $cycle/climfptable $cycle/filtertable > clim.txt
+	awk -v dd=$const/clim '$1=="'$conf'" {
+		printf("ln -sfv %s/%s %s\n",dd,$2,$3);
+		}' $cycle/climtable $cycle/climfptable $cycle/filtertable > clim.txt
 
 	awk -v dd=$const/coupling '$1=="'$conf'" {printf("lbc=%s/%s\n",dd,$2);}' \
 		$cycle/coupltable >> job.profile
@@ -338,7 +355,8 @@ do
 		EOF
 	fi
 
-	awk '$1=="'$conf'" {printf("ios=%s\n",$2);}' $cycle/ioservtable >>job.profile
+	awk '$1=="'$conf'" {printf("ios=%s\n",$2);}' $cycle/ioservtable \
+		>> job.profile
 
 	if [ $bin = "MASTER911" ]
 	then
@@ -392,8 +410,15 @@ do
 
 	[ $nj -eq 0 ] && continue
 
-	jobid=$(cd $ddcy/$conf; sbatch $name.sh | tail -1 | awk '{print $NF}')
+	jobid=$(cd $ddcy/$conf; sbatch $name.sh)
+	jobid=$(echo $jobid | tail -1 | awk '{print $NF}')
 	echo "--> job submitted for conf $conf - jobid: $jobid"
+	if [ -z "$jobid" ] || ! echo $jobid | grep -qE '^[0-9]+$'
+	then
+		echo "Error: unknown jobid format for conf $conf" >&2
+		exit 1
+	fi
+
 	echo "$jobid $conf" >> jobs.txt
 	if [ $(wc -l jobs.txt | awk '{print $1}') -eq $nj ]
 	then
