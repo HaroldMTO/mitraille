@@ -88,7 +88,6 @@ fi
 
 if [ "$lbc" ]
 then
-	[ -f $(basename $lbc) ] && lbc=$(basename $lbc)
 	echo "Getting Boundary Conditions files:"
 	ls $lbc*
 

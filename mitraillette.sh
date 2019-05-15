@@ -328,11 +328,12 @@ do
 		}' $cycle/constable > const.txt
 
 	awk -v dd=$const/clim '$1=="'$conf'" {
-		printf("ln -sfv %s/%s %s\n",dd,$2,$3);
+		printf("ln -sfv %s %s\n",gensub("^PATH",dd,"",$2),$3);
 		}' $cycle/climtable $cycle/climfptable $cycle/filtertable > clim.txt
 
-	awk -v dd=$const/coupling '$1=="'$conf'" {printf("lbc=%s/%s\n",dd,$2);}' \
-		$cycle/coupltable >> job.profile
+	awk -v dd=$const/coupling '$1=="'$conf'" {
+		printf("lbc=%s\n",gensub("^PATH",dd,"",$2));
+		}' $cycle/coupltable >> job.profile
 
 	awk -v dd=$cycle/fpnam '$1=="'$conf'" {printf("cp %s/%s %s\n",dd,$2,$3);}' \
 		$cycle/fptable > fpos.txt
