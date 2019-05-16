@@ -329,7 +329,10 @@ do
 
 	awk -v dd=$const/clim '$1=="'$conf'" {
 		printf("ln -sfv %s %s\n",gensub("^PATH",dd,"",$2),$3);
-		}' $cycle/climtable $cycle/climfptable $cycle/filtertable > clim.txt
+		}' $cycle/climtable > clim.txt
+	awk -v dd=$const/clim '$1=="'$conf'" {
+		printf("ln -sfv %s/%s %s\n",dd,$2,$3);
+		}' $cycle/climfptable $cycle/filtertable >> clim.txt
 
 	awk -v dd=$const/coupling '$1=="'$conf'" {
 		printf("lbc=%s\n",gensub("^PATH",dd,"",$2));
