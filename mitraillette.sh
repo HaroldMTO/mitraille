@@ -20,7 +20,7 @@ Usage:
 Arguments:
 	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to \
 find IFS binaries
-	rcfile: resource file for a model job
+	rcfile: resource file for a model job (cf Details)
 	-conf: filter for configuration name, as referenced in profil_table
 	-opt: pack option, according to pack naming (default: '2y')
 	-noenv: do not export (current) environment in job scripts. Note: \
@@ -42,13 +42,18 @@ Details:
 		- const: path to constant files (constants, clims, coupling files, \
 guess and analysis files)
 		- packs: path to packs, one of them corresponding to CYCLE and opt
-	These variables are used in here as shell commands and so do not need to \
+	These variables are used in here as shell commands, hence do not need to \
 be in environment.
 
 	Batch jobs need variable PATH contain path(s) to xpnam and io_poll. Any \
-other environment variable
+other environment variable (to be used in the binary) may be added in user's \
+environment, either in current one or preferably in default one (ie startup \
+file .bashrc).
 
 	Filters act on both jobs setting and execution.
+
+	Alternative HPC actions for completion and comparison (option -hpc) use \
+SSH protocol for connexion. Master mode is used for optimization reasons.
 
 Dependencies:
 	None
@@ -60,8 +65,8 @@ logdiff()
 	if [ ! -e $ref/$conf/jobOK -o ! -s $ref/$conf/NODE.001_01 ] && [ "$hpc" ]
 	then
 		mkdir -p $ref/$conf
-		scp -q $hpc:$ref/$conf/jobOK $hpc:$ref/$conf/NODE.001_01 $ref/$conf \
-			2>/dev/null || true
+		scp -qo 'Controlpath=/tmp/ssh-%r@%h:%p' $hpc:$ref/$conf/jobOK \
+			$hpc:$ref/$conf/NODE.001_01 $ref/$conf 2>/dev/null || return
 	fi
 
 	if [ ! -e $ref/$conf/jobOK -o ! -s $ref/$conf/NODE.001_01 ]
@@ -76,7 +81,7 @@ logdiff()
 		return
 	fi
 
-	spdiff $ddcy/$conf/NODE.001_01 $ref/$conf/NODE.001_01 | grep -vE '^$' | \
+	spdiff $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01 | grep -vE '^$' | \
 		sed -re 's:^# +:STEP(s)\t:' -e 's: +$::' -e 's: {2,}([A-Z]+):\t\1:g' \
 		-e 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g'
 }
@@ -248,6 +253,15 @@ then
 	fi
 fi
 
+if [ "$hpc" ]
+then
+	# connection in mode master with control socket file
+	# batchmode for disabling password authentification
+	# must be in background (-f) for keeping connection alive (like a server)
+	# subsequent scp's replace -S 'file' with -o 'Controlpath=file'
+	ssh -f -o 'batchmode=yes' -S '/tmp/ssh-%r@%h:%p' -M $hpc bash
+fi
+
 if [ "$ref" ] && [ ! -d $ref ]
 then
 	ref=$dirout/$ref
@@ -265,8 +279,8 @@ do
 	if [ ! -e $ddcy/$conf/jobOK ] && [ "$hpc" ]
 	then
 		mkdir -p $ddcy/$conf
-		scp -q $hpc:$ddcy/$conf/jobOK $hpc:$ddcy/$conf/NODE.001_01 $ddcy/$conf \
-			2>/dev/null || true
+		scp -qo 'Controlpath=/tmp/ssh-%r@%h:%p' $hpc:$ddcy/$conf/jobOK \
+			$hpc:$ddcy/$conf/NODE.001_01 $ddcy/$conf 2>/dev/null || true
 	fi
 
 	if [ -e $ddcy/$conf/jobOK ]
@@ -403,7 +417,10 @@ do
 
 	ntask=$((ntaskt-ntaskio))
 	ntpn=$((ntaskt/nnodes))
+
 	mkdir -p $ddcy/$conf
+
+	cp $mitra/config/IFSenv.txt $ddcy/$conf
 	sed -e "s:_name:$name:g" -e "s:_ntaskt:$ntaskt:g" -e "s:_ntasks:$ntask:g" \
 		-e "s:_ntaskio:$ntaskio:g" -e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
 		-e "s:_nthreads:$nthread:g" -e "s:_maxmem:$mem:g" -e "s:_wall:$wall:g" \

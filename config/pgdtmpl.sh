@@ -20,17 +20,9 @@ then
 "
 fi
 
-# mandatory
-ulimit -s unlimited
-export DR_HOOK=0
+# mandatory PGD specific environment
 export DR_HOOK_NOT_MPI=1
-export DR_HOOK_IGNORE_SIGNALS=-1
-export DR_HOOK_SILENT=1
-export KMP_STACKSIZE=2G
 
-# additional
-export EC_MPI_ATEXIT=0
-export EC_PROFILE_HEAP=0
 env > env.txt
 
 lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|NODE|core|std(out|err))\."
@@ -58,6 +50,15 @@ then
 	echo "Possibly influencing environment variables:"
 	grep -f $varenv env.txt || echo "--> none"
 fi
+
+if [ -s IFSenv.txt ]
+then
+	echo "Noticeable missing environment variables:"
+	vars=$(grep -f IFSenv.txt env.txt | sed -re 's:=.*::' | xargs | tr ' ' '|')
+	[ "$vars" ] && grep -vE "^($vars)$" IFSenv.txt || echo "--> none"
+fi
+
+echo "Stack limit: $(ulimit -s)"
 
 echo "Linking Ecoclimap files"
 lnv $ecoclimap/* .
