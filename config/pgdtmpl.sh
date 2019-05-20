@@ -55,7 +55,7 @@ if [ -s IFSenv.txt ]
 then
 	echo "Noticeable missing environment variables:"
 	vars=$(grep -f IFSenv.txt env.txt | sed -re 's:=.*::' | xargs | tr ' ' '|')
-	[ "$vars" ] && grep -vE "^($vars)$" IFSenv.txt || echo "--> none"
+	grep -vE "^($vars)$" IFSenv.txt || echo "--> none"
 fi
 
 echo "Stack limit: $(ulimit -s)"
