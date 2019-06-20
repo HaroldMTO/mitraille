@@ -1,0 +1,61 @@
+Remarks:
+
+In the following, IFS means ECMWF and Meteo France common source code.
+The various versions of this source code are called 'cycles' (various versions).
+When compiled, a set of binaries (main and side) are produced.
+At Meteo France, they are referred to as 'packs'.
+
+Mitraillette:
+
+Tool for building, running and checking various configurations of IFS cycles.
+It consists in IFS jobs being built, then run (optionally) and finally,
+if desired, compared to results from a reference cycle.
+
+Installation:
+
+Source code is installed via Makefile. Just run make in the source directory.
+Installation sets the main Mitraillette's script mitraillette.sh in ~/bin and
+copies directory config in directory ~/proc/mitraille (dynamically created).
+Just add ~/bin to your PATH to run the script.
+
+Overview:
+
+Mitraillette's script needs a simple resource file indicating various paths to
+input files (analyses, climatology, constants, forcing/coupling files).
+It also needs paths to other resources: IFS binaries and some utilities. All
+these other resources must be found in the user's environment.
+Mitraillette builds, runs and checks a predefined set of NWP configurations.
+Only building is activated by default. Other actions are controlled by
+command line arguments.
+Building a given configuration must comply with the following:
+- the configuration name must be known to Mitraillette: these names all lie in
+file config/profil_table.
+- for the given cycle tag (like cy46t1_main.01), the set of input namelists files
+must lie in the cycle's user directory (.../cy46t1_main.01/)
+- namelists files are placed in cycle's subdirectories namelist, selnam, fpnam,
+etc.
+- a few other files (reference tables, in config/) contain information for all
+the configurations, among which the one to be tested. These files and the conf
+list (profil_table) can be overridden from config by the cycle's directory.
+
+Environment:
+
+Mitraillette needs access to some tools, depending on the configuration(s) to be
+tested. Those tools are io_poll and lfi_move, which are wrappers of some IFS
+binaries. They must be known to variable PATH. Another wrapper, mpiauto, is used
+for parallel executions of IFS binaries and has also to be accessible by the
+environment.
+
+Batch jobs and environment:
+
+Mitraillette configuration jobs are run in batch (by SLURM). A few environment
+variables must exist and must be set in the shell environment. In addition to
+the variable PATH (already mentioned), variables to set are those in file
+config/IFSenv.txt. A final setting is to unlimit the stask size: set 'ulimit -s
+unlimited' in the environment.
+
+For all these variables, the user can set them in 2 ways:
+- either in the current environment, without the '-noenv' option
+- either in the default environment (.profile), with the '-noenv' option
+These options exclude each other, except that very often, current environment is
+just the default one.

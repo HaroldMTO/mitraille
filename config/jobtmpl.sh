@@ -29,7 +29,7 @@ alias lnv='ln -sfv'
 set -e
 rm -f core.*
 
-echo "Setting job profile" #TAG PROFILE
+echo -e "\nSetting job profile" #TAG PROFILE
 
 if [ -z "$nam" -o -z "$bin" -o -z "$rrtm" ]
 then
@@ -43,25 +43,25 @@ fi
 
 if [ -n "$varenv" ] && [ -s $varenv ]
 then
-	echo "Possibly influencing environment variables:"
+	echo -e "\nPossibly influencing environment variables:"
 	grep -f $varenv env.txt || echo "--> none"
 fi
 
 if [ -s IFSenv.txt ]
 then
-	echo "Noticeable missing environment variables:"
+	echo -e "\nNoticeable missing environment variables:"
 	vars=$(grep -f IFSenv.txt env.txt | sed -re 's:=.*::' | xargs | tr ' ' '|')
 	grep -vE "^($vars)$" IFSenv.txt || echo "--> none"
 fi
 
-echo "Stack limit: $(ulimit -s)"
+echo -e "\nStack limit: $(ulimit -s)"
 
-echo "Linking clims and filters for Surfex and FullPOS (if required)" # TAG CLIM
+echo -e "\nLinking clims and filters for Surfex and FullPOS (if required)" # TAG CLIM
 
-echo "Linking constants for RRTM radiation scheme"
+echo -e "\nLinking constants for RRTM radiation scheme"
 lnv $rrtm/* .
 
-echo "Linking Initial Conditions" # TAG INIT
+echo -e "\nLinking Initial Conditions" # TAG INIT
 
 # conf GM 400, 500
 if [ -s EBAUCHE ]
@@ -75,19 +75,19 @@ fi
 
 if [ "$initsfx" ]
 then
-	echo "Linking Initial Conditions for Surfex"
+	echo -e "\nLinking Initial Conditions for Surfex"
 	lnv $initsfx ICMSHARPEINIT.sfx
 fi
 
 if [ "$ecoclimap" ]
 then
-	echo "Linking Ecoclimap constants for Surfex"
+	echo -e "\nLinking Ecoclimap constants for Surfex"
 	lnv $ecoclimap/* .
 fi
 
 if [ "$lbc" ]
 then
-	echo "Getting Boundary Conditions files:"
+	echo -e "\nGetting Boundary Conditions files:"
 	ls $lbc*
 
 	i=0
@@ -108,7 +108,7 @@ then
 	[ $i -eq 1 ] && lnv $fic $(printf "ELSCFARPEALBC%03d" $i)
 fi
 
-echo "Getting main namelist"
+echo -e "\nGetting main namelist"
 cp $nam fort.4
 
 # conf IFS
@@ -116,19 +116,22 @@ lnv fort.4 fort.25
 
 if [ "$selnam" ]
 then
-	echo "Getting side namelist $selnam"
+	echo -e "\nGetting side namelist $selnam"
 	fout=$(echo $selnam | sed -re 's:.+\.(.+\.nam):\1:')
 	cp $selnam $fout
 
 	# restart option: only for conf with SURFEX for the moment
 	if [ "$diffnam" ]
 	then
-		echo "Make restart namelists for PGD from delta files:"
+		# mandatory PGD specific environment: DR_HOOK_NOT_MPI
+		DR_HOOK_NOT_MPI=1 
+
+		echo -e "\nMake restart namelists for PGD from delta files:"
 		ls ${diffnam}_CONVPGD.nam ${diffnam}_CONVPGD.selnam_exseg1
 		xpnam --dfile="${diffnam}_CONVPGD.nam" --inplace fort.4
 		xpnam --dfile="${diffnam}_CONVPGD.selnam_exseg1" --inplace $fout
 
-		echo "Launch MPI job"
+		echo -e "\nLaunch MPI job"
 		if [ ! -f mpipgdOK ]
 		then
 			mpiexe $bin > mpipgd.out 2> mpipgd.err
@@ -141,12 +144,12 @@ then
 		cp $selnam $fout
 		mv ICMSHARPE+0000.sfx Const.Clim.sfx
 
-		echo "Make namelist for PREP from delta file:"
+		echo -e "\nMake namelist for PREP from delta file:"
 		ls ${diffnam}_CONVPREP.nam
 		cp $nam fort.4
 		xpnam --dfile="${diffnam}_CONVPREP.nam" --inplace fort.4
 
-		echo "Launch MPI job"
+		echo -e "\nLaunch MPI job"
 		if [ ! -f mpiprepOK ]
 		then
 			mpiexe $bin > mpiprep.out 2> mpiprep.err
@@ -158,14 +161,14 @@ then
 		cp $nam fort.4
 		mv ICMSHARPE+0000.sfx ICMSHARPEINIT.sfx
 
-		echo "Change orography in PGD (Const.Clim.sfx)"
-		$LFITOOLS testfa < $orog
+		echo -e "\nChange orography in PGD (Const.Clim.sfx)"
+		DR_HOOK_NOT_MPI=1 $LFITOOLS testfa < $orog
 	fi
 fi
 
 if [ "$fpnam" ]
 then
-	echo "Getting FPOS frequency namelists" # TAG FPOS
+	echo -e "\nGetting FPOS frequency namelists" # TAG FPOS
 
 	for fic in $fpnam*
 	do
@@ -187,7 +190,7 @@ then
 	done
 fi
 
-echo "Launch MPI job"
+echo -e "\nLaunch MPI job"
 if [ ! -f mpiOK ]
 then
 	touch fort.4
@@ -198,13 +201,13 @@ fi
 
 if [ "$fcnam" ]
 then
-	echo "Launching other jobs"
+	echo -e "\nLaunching other jobs"
 	if [ ! -f mpifcOK ]
 	then
 		rm -f mpifc.out mpifc.err
 		for fnam in $fcnam*
 		do
-			echo ". job with namelist $fnam"
+			echo -e "\n. job with namelist $fnam"
 			cp $fnam fort.4
 			mpiexe $bin >> mpifc.out 2>> mpifc.err
 			find -type f -newer fort.4 | grep -vE $lstRE >> mpifcOK
@@ -218,7 +221,7 @@ fi
 
 if [ "$diffnam" ]
 then
-	echo "Launch MPI job with restart"
+	echo -e "\nLaunch MPI job with restart"
 	if [ ! -f mpidiffOK ]
 	then
 		mkdir -p start
@@ -229,13 +232,13 @@ then
 		cat mpidiffOK | xargs ls -l
 	fi
 
-	echo "Compare last forecast step:"
+	echo -e "\nCompare last forecast step:"
 	fcst=$(ls -1 ICMSHARPE+* | sort | tail -1)
 	DR_HOOK=0 DR_HOOK_NOT_MPI=1 $LFITOOLS lfidiff --lfi-file-1 start/$fcst \
 		--lfi-file-2 $fcst
 elif echo $nam | grep -qE '/GM_FCTI_HYD_SL2_VFE_ARPPHYISBA_SLT_REST\.nam'
 then
-	echo "Launch MPI job with restart (special ARPEGE/ISBA conf)"
+	echo -e "\nLaunch MPI job with restart (special ARPEGE/ISBA conf)"
 	if [ ! -f mpidiffOK ]
 	then
 		touch fort.4
@@ -247,7 +250,7 @@ fi
 
 if [ "$ios" ]
 then
-	echo "Post-processing files (IO server)"
+	echo -e "\nPost-processing files (IO server)"
 	if [ ! -f ioOK ]
 	then
 		touch ioOK.tmp
@@ -259,7 +262,7 @@ then
 	fi
 fi
 
-echo "Rename files"
+echo -e "\nRename files"
 for fic in $(find -maxdepth 1 -name \*ARPE\* | \
 	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*+[0-9]{4}')
 do
@@ -280,13 +283,14 @@ do
 	fi
 done
 
-echo "Remove large init files"
+echo -e "\nRemove large init files"
 [ -s EBAUCHE ] && rm ICMSHARPEINIT
 rm -f ICMSHARPEIMIN
 
 rm -f stdout.* stderr.*
 
-echo "Log and profiling files:"
-ls -l ifs.stat NODE.*
+echo -e "\nLog and profiling files:"
+ls -l _name.log NODE.001_01 env.txt mpi*.out mpi*.err
+ls -l | grep -E '(meminfo\.txt|ifs\.stat|linux_bind\.txt)'
 
 touch jobOK

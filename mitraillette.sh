@@ -15,7 +15,7 @@ Description:
 Usage:
 	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-opt opt] [-noenv] \
 [-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] [-force] \
-[-v]
+[-h]
 
 Arguments:
 	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to \
@@ -34,7 +34,7 @@ environment is set from shell's startup, as login shell (-> .profile).
 	-hpc: let job conf completion and comparison (ifever asked for) being \
 looked for on HPC named MACHINE as an alternative to job local directory
 	-force: keep on submitting jobs even if any previously submitted job failed
-	-v: verbose mode
+	-h: print this help and exit normally
 
 Details:
 	rcfile is sourced and must set the following (interactive) variables:
@@ -130,7 +130,6 @@ nn=1000
 nomp=100
 nj=0
 ref=""
-verbose=0
 force=0
 hpc=""
 
@@ -185,7 +184,6 @@ do
 			shift
 			;;
 		-force) force=1;;
-		-v) verbose=1;;
 		-h) help=1;;
 		*)
 			echo "Error: unknown option '$1'" >&2
@@ -220,7 +218,7 @@ packs: '$packs'
 	exit 1
 elif [ ! -d $packs -o ! -d $const -o ! $dirout ]
 then
-	printf "Error: mandatory directories missing" >&2
+	echo "Error: mandatory directories missing" >&2
 	ls -d $packs $const $dirout
 fi
 
@@ -315,7 +313,7 @@ do
 			exit 1;;
 	esac
 
-	[ $verbose -ne 0 ] && echo "Setting conf $conf $nnodes $wall' $bin"
+	echo "Setting conf $conf $nnodes $wall' $bin"
 
 	cat > job.profile <<-EOF
 		export OMP_NUM_THREADS=$nthread

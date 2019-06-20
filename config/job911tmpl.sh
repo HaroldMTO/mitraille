@@ -29,7 +29,7 @@ alias lnv='ln -sfv'
 set -e
 rm -f core.*
 
-echo "Setting job profile" #TAG PROFILE
+echo -e "\nSetting job profile" #TAG PROFILE
 
 if [ -z "$nam" -o -z "$bin" ]
 then
@@ -42,30 +42,34 @@ fi
 
 if [ -n "$varenv" ] && [ -s $varenv ]
 then
-	echo "Possibly influencing environment variables:"
+	echo -e "\nPossibly influencing environment variables:"
 	grep -f $varenv env.txt || echo "--> none"
 fi
 
 if [ -s IFSenv.txt ]
 then
-	echo "Noticeable missing environment variables:"
+	echo -e "\nNoticeable missing environment variables:"
 	vars=$(grep -f IFSenv.txt env.txt | sed -re 's:=.*::' | xargs | tr ' ' '|')
 	grep -vE "^($vars)$" IFSenv.txt || echo "--> none"
 fi
 
-echo "Stack limit: $(ulimit -s)"
+echo -e "\nStack limit: $(ulimit -s)"
 
-echo "Getting main namelist $nam"
+echo -e "\nGetting main namelist $nam"
 cp $nam fort.4
 
-echo "Launch MPI job"
+echo -e "\nLaunch MPI job"
 mpiexe $bin > mpi.out 2> mpi.err
 find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 
-echo "Rename files"
+echo -e "\nRename files"
 lnv MATDILA MDI
 lnv MATDILA MCO
 
 rm -f stdout.* stderr.*
+
+echo -e "\nLog and profiling files:"
+ls -l _name.log env.txt mpi*.out mpi*.err
+ls -l | grep -E '(meminfo\.txt|ifs\.stat|linux_bind\.txt)'
 
 touch jobOK

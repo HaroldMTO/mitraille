@@ -33,7 +33,7 @@ alias lnv='ln -sfv'
 set -e
 rm -f core.*
 
-echo "Setting job profile" #TAG PROFILE
+echo -e "\nSetting job profile" #TAG PROFILE
 
 if [ -z "$nam" -o -z "$bin" -o -z "$ecoclimap" ]
 then
@@ -47,28 +47,28 @@ fi
 
 if [ -n "$varenv" ] && [ -s $varenv ]
 then
-	echo "Possibly influencing environment variables:"
+	echo -e "\nPossibly influencing environment variables:"
 	grep -f $varenv env.txt || echo "--> none"
 fi
 
 if [ -s IFSenv.txt ]
 then
-	echo "Noticeable missing environment variables:"
+	echo -e "\nNoticeable missing environment variables:"
 	vars=$(grep -f IFSenv.txt env.txt | sed -re 's:=.*::' | xargs | tr ' ' '|')
 	grep -vE "^($vars)$" IFSenv.txt || echo "--> none"
 fi
 
-echo "Stack limit: $(ulimit -s)"
+echo -e "\nStack limit: $(ulimit -s)"
 
-echo "Linking Ecoclimap files"
+echo -e "\nLinking Ecoclimap files"
 lnv $ecoclimap/* .
 
-echo "Linking constants for Surfex" # TAG CONST
+echo -e "\nLinking constants for Surfex" # TAG CONST
 
-echo "Getting namelist $nam"
+echo -e "\nGetting namelist $nam"
 cp $nam OPTIONS.nam
 
-echo "Launch MPI job"
+echo -e "\nLaunch MPI job"
 if [ ! -f mpiOK ]
 then
 	mpiexe $bin > mpi.out 2> mpi.err
@@ -78,7 +78,7 @@ fi
 
 if [ -n "$pgd" -a -n "$pgdfa" ]
 then
-	echo "Making FA PGD:"
+	echo -e "\nMaking FA PGD:"
 	ls $pgd $pgdfa
 	$LFITOOLS faempty $pgdfa test.fa
 	$sfxtools sfxlfi2fa --sfx-fa--file test.fa --sfx-lfi-file $pgd
@@ -95,7 +95,8 @@ fi
 
 rm -f stdout.* stderr.*
 
-echo "Log files list:"
-ls -l LISTING_PGD.txt
+echo -e "\nLog and profiling files:"
+ls -l _name.log LISTING_PGD.txt env.txt mpi*.out mpi*.err
+ls -l | grep -E '(meminfo\.txt|ifs\.stat|linux_bind\.txt)'
 
 touch jobOK

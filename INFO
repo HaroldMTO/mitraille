@@ -1,0 +1,69 @@
+Configuration naming practice:
+- L1/L2/L3: LAM model (1D/2D/3D)
+- GM/GE: Global model, GE:LECMWF=T
+- FCST/FCTI: forecast with/without DFI initialization
+- FPIN/FPOF: forecast with inline/offline post-precessing
+- Cxxx: conf' number xxx (nconf=901, 923, 401, etc.)
+- PGDI/PGDS: run PGD binary
+- DILA: dilatation matrices
+- HYD/NHE/NHQ: hydrostatic/non-hydrostatic dynamical core (full/quasi elastic)
+- EUL/SL2/SL3: Eulerian/Semi-Langragian dynamical core (2/3 time level)
+- VFD/VFE: vertical discretization using finite differences/elements
+- ADIAB: adiabatic option (no physics)
+- [ARP/ARL/ARO][PHY/SIM/VSI]: ARPEGE/ALARO/AROME physics (full/simplified/very simple)
+- ISBA/SFEX: surface scheme using ISBA or SURFEX
+- PCF/PCC: PC scheme (full/cheap)
+- SETTLS/GWADV2/RDBBC2/EXTCLA/NDEC/VESL/XIDT/SI/MAD/...: dynamical options
+- SLT/FLT: simple/fast Legendre transform
+- REST: forecast with restart files
+- IOS: IO server
+- TL: Gaussian grid with linear truncation
+- 030S/031U: 30/31 vertical levels with stretched/unstretched mesh
+- 1198C064: Gaussian grid with 1198 lats in each hemisphere, stretching coef 6.4
+
+
+Namelists must have extension '.nam'.
+
+In namelist naming there is a group of characters for type of physics:
+  for example ARPPHYISBA means upper air physics (ARPEGE one), surface scheme is ISBA.
+
+For increased output level:
+- change NPRINTLEV=0 into NPRINTLEV=1
+
+For bound checking and debug mode:
+- change NUNDEFLD=-99999999 to NUNDEFLD=1
+
+For transforming diabatic namelists into adiabatic ones:
+- For namelist elements which are present in "vv_adiab_physics":
+  fill them according to the content of vv_adiab_physics.
+- Additionally:
+  * LAROME=F
+  * No CFU
+  * No XFU
+  * No ISP
+  * No diabatic DDH
+  * No PHYSOL, CFU, XFU FULLPOS diagnostics.
+  * No reference to NSFXHISTS, N1SFXHIS.
+  * Adapt the list of GFL (generally, only Q is kept), adapt NAMGFL.
+    Check attributes LGP, LSP, LGPINGP, LCDERS, LQM, NREQIN, LSLHD, NCOUPLING.
+    Ex for adiabatic AROME:
+     &NAMGFL
+       YQ_NL%LGP=.TRUE.,
+       YQ_NL%LSP=.FALSE.,
+       YQ_NL%LGPINGP=.TRUE.,
+       YQ_NL%LCDERS=.FALSE.,
+       YQ_NL%LQM=.TRUE.,
+       YQ_NL%NREQIN=1,
+       YQ_NL%LSLHD=.FALSE.,
+       YQ_NL%NCOUPLING=1,
+     /
+  * Value of LSLHD_GFL must be checked (must be consistent with NAMGFL).
+    Ex for adiabatic AROME: LSLHD_GFL=.FALSE.
+
+For testing with a very small timestep: no DFI
+- change LDFI=.TRUE. into LDFI=.FALSE.
+- change LXXGST=.TRUE. into LXXGST=.FALSE.
+- change LXMWINDCLS=.TRUE. into LXMWINDCLS=.FALSE.
+
+For VFE-NH:
+- test always with LVFE_DELNHPRE=F, LVFE_X_TERM=F.

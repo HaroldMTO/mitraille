@@ -237,12 +237,6 @@ grep -E '^ *\$\{?IOPOLL}?' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$\{?IOPOLL}? *.*\-\-prefix +(.+):\1 \2:' | \
 	sort > $cy/ioservtable
 
-echo "Diff tables"
-for fic in $cy/*table
-do
-	diff -Bbq $fic config || true
-done
-
 exit
 cd ~saez/mitraille/cy46t1
 grep -lE '\<COMPLETED\>' ~saez/mitraille/cy46/*/O* | \
