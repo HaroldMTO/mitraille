@@ -232,13 +232,26 @@ fi
 
 echo "IFS pack found is '$pack'"
 
-if [ ! -d $cycle ]
+const=$(cd $const > /dev/null && pwd)
+dirout=$(cd $dirout > /dev/null && pwd)
+
+if [ -d config ]
 then
+	echo "--> use local directory config/"
+	config=$PWD/config
+else
+	config=$mitra/config
+fi
+
+if [ -d $cycle ]
+then
+	cycle=$(cd $cycle > /dev/null && pwd)
+else
+	echo "--> use mitraillette's internal jobs directory $(basename $cycle)"
 	cycle=$mitra/$cycle
 	ls -d $cycle >/dev/null
 fi
 
-cycle=$(cd $cycle > /dev/null && pwd)
 ddcy=$dirout/$(basename $cycle)
 
 if [ "$hpc" ]
@@ -266,8 +279,12 @@ then
 	ls -d $ref >/dev/null
 fi
 
-rm -f jobs.txt
-grep -vE '^\s*#' $mitra/config/profil_table | \
+tmpdir=$(mktemp --tmpdir -d mitraXXX)
+trap 'rm -r $tmpdir' 0
+
+cd $tmpdir
+
+grep -vE '^\s*#' $config/profil_table | \
 	while read conf bin mem wall cpu ntaskio ntaskt nnodes nthread
 do
 	[ -n "$bin0" -a $bin != "$bin0" ] && continue
@@ -287,7 +304,7 @@ do
 		[ "$ref" ] && logdiff
 
 		continue
-	elif [ $force -eq 0 ] && ! grep -qE "^$conf$" $mitra/config/validconfs.txt
+	elif [ $force -eq 0 ] && ! grep -qE "^$conf$" $config/validconfs.txt
 	then
 		echo "--> invalid conf $conf"
 		continue
@@ -315,87 +332,79 @@ do
 
 	echo "Setting conf $conf $nnodes $wall' $bin"
 
-	cat > job.profile <<-EOF
-		export OMP_NUM_THREADS=$nthread
-		export LFITOOLS=$pack/bin/LFITOOLS
-		varenv=$cycle/varenv.txt
-		nam=$cycle/namelist/$conf.nam
-		bin=$pack/bin/$bin
-	EOF
-
-	awk '$1=="'$conf'" {printf("pgd=%s\n",$2);}' $cycle/pgdtable >> job.profile
-	awk '$1=="'$conf'" {printf("pgdfa=../%s/%s\n",$2,$3);}' $cycle/pgdfatable \
-		>> job.profile
-
 	awk -v dd=$const/analyses '$1=="'$conf'" {
-		printf("ln -sfv %s/%s %s\n",dd,$2,$3);
-		}' $cycle/initable > init.txt
-
-	awk -v dd=$const/anasurfex '$1=="'$conf'" {
-		printf("initsfx=%s/%s\n",dd,$2);
-		}' $cycle/inisfxtable >> job.profile
+		printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/initable > init.txt
 
 	awk -v dd=$const/pgd '$1=="'$conf'" {
-		printf("ln -sfv %s/%s %s\n",dd,$2,$3);
-		}' $cycle/constable > const.txt
+		printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/constable > const.txt
 
-	awk -v dd=$const/clim '$1=="'$conf'" {
-		printf("ln -sfv %s %s\n",gensub("^PATH",dd,"",$2),$3);
-		}' $cycle/climtable > clim.txt
-	awk -v dd=$const/clim '$1=="'$conf'" {
-		printf("ln -sfv %s/%s %s\n",dd,$2,$3);
-		}' $cycle/climfptable $cycle/filtertable >> clim.txt
+	{
+		awk -v dd=$const/clim '$1=="'$conf'" {
+			printf("ln -sfv %s %s\n",gensub("^PATH",dd,"",$2),$3);}' \
+			$cycle/climtable
+		awk -v dd=$const/clim '$1=="'$conf'" {
+			printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/climfptable \
+		$cycle/filtertable
+	} > clim.txt
 
-	awk -v dd=$const/coupling '$1=="'$conf'" {
-		printf("lbc=%s\n",gensub("^PATH",dd,"",$2));
-		}' $cycle/coupltable >> job.profile
+	{
+		cat <<-EOF
+			export OMP_NUM_THREADS=$nthread
+			export LFITOOLS=$pack/bin/LFITOOLS
+			varenv=$cycle/varenv.txt
+			nam=$cycle/namelist/$conf.nam
+			bin=$pack/bin/$bin
+		EOF
+
+		find $cycle/selnam/ -name $conf.\* -printf 'selnam=%p\n'
+		find $cycle/fcnam/ -name $conf.\* | \
+			sed -re 's:(.+)\.nam[0-9]+$:fcnam=\1.nam:' | uniq
+		find $cycle/quadnam/ -name $conf.\* -printf "quadnam=%p\n"
+		awk '$1=="'$conf'" {printf("pgd=%s\n",$2);}' $cycle/pgdtable
+		awk '$1=="'$conf'" {printf("pgdfa=../%s/%s\n",$2,$3);}' $cycle/pgdfatable
+		awk -v dd=$const/anasurfex '$1=="'$conf'" {
+			printf("initsfx=%s/%s\n",dd,$2);}' $cycle/inisfxtable
+		awk -v dd=$const/coupling '$1=="'$conf'" {
+			printf("lbc=%s\n",gensub("^PATH",dd,"",$2));}' $cycle/coupltable
+		awk '$1=="'$conf'" {printf("ios=%s\n",$2);}' $cycle/ioservtable
+	} > job.profile
 
 	awk -v dd=$cycle/fpnam '$1=="'$conf'" {printf("cp %s/%s %s\n",dd,$2,$3);}' \
 		$cycle/fptable > fpos.txt
 	fpnam=$(cut -d " " -f3 fpos.txt | sed -re 's:[0-9]+$::' | uniq)
 	[ "$fpnam" ] && echo "fpnam=$fpnam" >> job.profile
 
-	find $cycle/quadnam/ -name $conf.\* -printf "quadnam=%p\n" >> job.profile
-
-	find $cycle/fcnam/ -name $conf.\* | \
-		sed -re 's:(.+)\.nam[0-9]+$:fcnam=\1.nam:' | uniq >> job.profile
-
-	find $cycle/selnam/ -name $conf.\* -printf 'selnam=%p\n' >> job.profile
-
 	diffnam=$(find $cycle/diffnam/ -name ${conf}_CONVPGD.nam)
 	if [ "$diffnam" ]
 	then
 		cat >> job.profile <<-EOF
 			diffnam=${diffnam/_CONVPGD\.nam/}
-			orog=$mitra/config/orog.txt
+			orog=$config/orog.txt
 		EOF
 	fi
 
-	awk '$1=="'$conf'" {printf("ios=%s\n",$2);}' $cycle/ioservtable \
-		>> job.profile
-
 	if [ $bin = "MASTER911" ]
 	then
-		tmpl=$mitra/config/job911tmpl.sh
+		tmpl=$config/job911tmpl.sh
 	elif [ $bin = "PGD" ]
 	then
 		cat >> job.profile <<-EOF
 			c923=$const/const/923N
 			ecoclimap=$const/clim/ecoclimap
-			lfi2fa=$mitra/config/lfi2fa.txt
+			lfi2fa=$config/lfi2fa.txt
 			sfxtools=$pack/bin/SFXTOOLS
 		EOF
 
-		tmpl=$mitra/config/pgdtmpl.sh
+		tmpl=$config/pgdtmpl.sh
 	elif echo $conf | grep -q C923
 	then
 		cat >> job.profile <<-EOF
 			c923=$const/const/923N
-			gridnam=$mitra/config/grid.nam
-			lfi2fa=$mitra/config/lfi2fa.txt
+			gridnam=$config/grid.nam
+			lfi2fa=$config/lfi2fa.txt
 		EOF
 
-		tmpl=$mitra/config/job923tmpl.sh
+		tmpl=$config/job923tmpl.sh
 	else
 		init=$(grep -E ' (EBAUCHE|ICMSHARPEINIT)$' init.txt | \
 			sed -re 's:.+ (.+) .+:\1:')
@@ -410,7 +419,7 @@ do
 			ecoclimap=$const/clim/ecoclimap
 		EOF
 
-		tmpl=$mitra/config/jobtmpl.sh
+		tmpl=$config/jobtmpl.sh
 	fi
 
 	ntask=$((ntaskt-ntaskio))
@@ -418,7 +427,7 @@ do
 
 	mkdir -p $ddcy/$conf
 
-	cp $mitra/config/IFSenv.txt $ddcy/$conf
+	cp $config/IFSenv.txt $ddcy/$conf
 	sed -e "s:_name:$name:g" -e "s:_ntaskt:$ntaskt:g" -e "s:_ntasks:$ntask:g" \
 		-e "s:_ntaskio:$ntaskio:g" -e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
 		-e "s:_nthreads:$nthread:g" -e "s:_maxmem:$mem:g" -e "s:_wall:$wall:g" \
@@ -447,5 +456,3 @@ do
 done
 
 [ -s jobs.txt ] && jobwait
-
-rm -f job.profile const.txt clim.txt fpos.txt init.txt jobs.txt
