@@ -206,6 +206,10 @@ rcfile: '$rcfile'
 	exit 1
 fi
 
+# default values
+const=$mitra/const
+dirout=$TMPDIR
+
 . $rcfile
 
 if [ -z "$packs" -o -z "$const" -o -z "$dirout" ]
@@ -427,7 +431,7 @@ do
 
 	mkdir -p $ddcy/$conf
 
-	cp $config/IFSenv.txt $ddcy/$conf
+	cp $config/IFSenv.txt $config/env.sh $ddcy/$conf
 	sed -e "s:_name:$name:g" -e "s:_ntaskt:$ntaskt:g" -e "s:_ntasks:$ntask:g" \
 		-e "s:_ntaskio:$ntaskio:g" -e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
 		-e "s:_nthreads:$nthread:g" -e "s:_maxmem:$mem:g" -e "s:_wall:$wall:g" \

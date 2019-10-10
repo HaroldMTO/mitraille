@@ -20,8 +20,6 @@ then
 "
 fi
 
-env > env.txt
-
 lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|NODE|core|std(out|err))\."
 alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --'
 alias lnv='ln -sfv'
@@ -41,17 +39,25 @@ rrtm: '$rrtm'
 	exit 1
 fi
 
-if [ -n "$varenv" ] && [ -s $varenv ]
+if [ -s env.sh ]
+then
+	echo -e "\nNoticeable missing environment variables:"
+	vars=$(env | grep -f IFSenv.txt | sed -re 's:=.*::' | xargs | tr ' ' '|')
+	if grep -vE "^($vars)$" IFSenv.txt
+	then
+		echo "--> new setting of all mandatory variables"
+		. env.sh
+	else
+		echo "--> none"
+	fi
+fi
+
+env > env.txt
+
+if [ -s $varenv ]
 then
 	echo -e "\nPossibly influencing environment variables:"
 	grep -f $varenv env.txt || echo "--> none"
-fi
-
-if [ -s IFSenv.txt ]
-then
-	echo -e "\nNoticeable missing environment variables:"
-	vars=$(grep -f IFSenv.txt env.txt | sed -re 's:=.*::' | xargs | tr ' ' '|')
-	grep -vE "^($vars)$" IFSenv.txt || echo "--> none"
 fi
 
 echo -e "\nStack limit: $(ulimit -s)"

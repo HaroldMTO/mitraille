@@ -7,7 +7,7 @@ Configuration naming practice:
 - PGDI/PGDS: run PGD binary
 - DILA: dilatation matrices
 - HYD/NHE/NHQ: hydrostatic/non-hydrostatic dynamical core (full/quasi elastic)
-- EUL/SL2/SL3: Eulerian/Semi-Langragian dynamical core (2/3 time level)
+- EUL/SL2/SL3: Eulerian/Semi-Lagrangian dynamical core (2/3 time level)
 - VFD/VFE: vertical discretization using finite differences/elements
 - ADIAB: adiabatic option (no physics)
 - [ARP/ARL/ARO][PHY/SIM/VSI]: ARPEGE/ALARO/AROME physics (full/simplified/very simple)
