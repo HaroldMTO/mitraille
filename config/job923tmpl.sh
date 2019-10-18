@@ -10,6 +10,15 @@
 #SBATCH -o _name.log
 #SBATCH --export=_varexp
 
+cpnam()
+{
+	cp vide.nml $2
+	tmpnam=$(mktemp tmpXXX.nam)
+	cp $1 $tmpnam
+	xpnam --dfile=$tmpnam --inplace $2
+	unlink $tmpnam
+}
+
 if [ "$SLURM_JOB_NAME" ]
 then
 	printf "SLURM job card:
@@ -76,8 +85,9 @@ rm -f Const.Clim # error otherwise
 
 if [ "$quadnam" ]
 then
+	cpnam $quadnam fort.4
 	echo -e "\nLaunch MPI 'quad' job"
-	sed -re 's:^ *N923=[0-9]:N923=1:' $quadnam > fort.4
+	sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=1:' -i fort.4
 	if [ ! -f mpiquadOK ]
 	then
 		mpiexe $bin > mpiquad.out 2> mpiquad.err
@@ -87,15 +97,18 @@ then
 	fi
 fi
 
+echo -e "\nGetting namelist for 'lin' jobs"
+cpnam $nam fort.4
+
 echo -e "\nLaunch MPI 'lin' job 1"
-sed -re 's:^ *N923=[0-9]:N923=1:' $nam > fort.4
+sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=1:' -i fort.4
 mpiexe $bin > mpi1.out 2> mpi1.err
 find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 rm -f Neworog # ???
 
 echo -e "\nLaunch MPI 'lin' job 2"
 lnv $c923/SURFACE_G/version2/i3e/* .
-sed -re 's:^ *N923=[0-9]:N923=2:' $nam > fort.4
+sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=2:' -i fort.4
 mpiexe $bin > mpi2.out 2> mpi2.err
 find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 
@@ -106,7 +119,7 @@ do
 	cp Const.Clim Const.Clim.$mm
 done
 
-sed -re 's:^ *N923=[0-9]:N923=3:' $nam > fort.4
+sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=3:' -i fort.4
 mpiexe $bin > mpi3.out 2> mpi3.err
 
 lnv $c923/SURFACE_G/version2/i3e/* .
@@ -123,14 +136,14 @@ do
 	echo -e "\nLaunch MPI 'lin' job 4"
 	lnv veg${mm}_GL veg_GL
 	lnv lai${mm}_GL lai_GL
-	sed -re 's:^ *N923=[0-9]:N923=4:' $nam > fort.4
+	sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=4:' -i fort.4
 	mpiexe $bin >> mpi4.out 2>> mpi4.err
 	find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 
 	echo -e "\nLaunch MPI 'lin' job 5"
 	lnv veg_${mm}_HR veg_HR
 	lnv lai_${mm}_HR lai_HR
-	sed -re 's:^ *N923=[0-9]:N923=5:' $nam > fort.4
+	sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=5:' -i fort.4
 	mpiexe $bin >> mpi5.out 2>> mpi5.err
 	find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 
@@ -140,20 +153,20 @@ do
 		lnv $fic $(basename ${fic/_${mm}_GL/_GL})
 	done
 
-	sed -re 's:^ *N923=[0-9]:N923=6:' $nam > fort.4
+	sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=6:' -i fort.4
 	xpnam --dfile $gridnam -i fort.4
 	mpiexe $bin >> mpi6.out 2>> mpi6.err
 	find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 
 	echo -e "\nLaunch MPI 'lin' job 8"
 	lnv $c923/CLIM_G/ozone/ascii/abc_quadra_$mm abc_coef
-	sed -re 's:^ *N923=[0-9]:N923=8:' $nam > fort.4
+	sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=8:' -i fort.4
 	mpiexe $bin >> mpi8.out 2>> mpi8.err
 	find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 
 	echo -e "\nLaunch MPI 'lin' job 9"
 	lnv $c923/CLIM_G/aerosols/ascii/aero.tegen.m${mm}_GL aero_GL
-	sed -re 's:^ *N923=[0-9]:N923=9:' $nam > fort.4
+	sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=9:' -i fort.4
 	mpiexe $bin >> mpi9.out 2>> mpi9.err
 	find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 

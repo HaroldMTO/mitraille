@@ -108,8 +108,7 @@ jobwait()
 			sleep 5
 		done
 
-		[ $force -eq 0 ] && sacct -nPXj $jobid -o state | grep -vi COMPLETED &&
-			continue
+		sacct -nPXj $jobid -o state | grep -vi COMPLETED && continue
 
 		[ -z "$ref" ] && continue
 
@@ -249,10 +248,10 @@ fi
 
 if [ -d $cycle ]
 then
+	echo "--> use user's jobs directory $cycle"
 	cycle=$(cd $cycle > /dev/null && pwd)
 else
-	echo "--> use mitraillette's internal jobs directory $(basename $cycle)"
-	cycle=$mitra/$cycle
+	echo $cycle | grep -vqE '^/' && cycle=$mitra/$cycle
 	ls -d $cycle >/dev/null
 fi
 
@@ -330,8 +329,8 @@ do
 		GE_*) name=ifs;;
 		L[123]_*) name=alaro;;
 		*)
-			echo "Error: unknown model name for $conf"
-			exit 1;;
+			echo "Warning: unknown job name for $conf, set name to 'model'"
+			name=model;;
 	esac
 
 	echo "Setting conf $conf $nnodes $wall' $bin"
@@ -356,14 +355,14 @@ do
 			export OMP_NUM_THREADS=$nthread
 			export LFITOOLS=$pack/bin/LFITOOLS
 			varenv=$cycle/varenv.txt
-			nam=$cycle/namelist/$conf.nam
+			nam=$cycle/deltanam/$conf.nam
 			bin=$pack/bin/$bin
 		EOF
 
 		find $cycle/selnam/ -name $conf.\* -printf 'selnam=%p\n'
 		find $cycle/fcnam/ -name $conf.\* | \
 			sed -re 's:(.+)\.nam[0-9]+$:fcnam=\1.nam:' | uniq
-		find $cycle/quadnam/ -name $conf.\* -printf "quadnam=%p\n"
+		find $cycle/deltaquad/ -name $conf.\* -printf "quadnam=%p\n"
 		awk '$1=="'$conf'" {printf("pgd=%s\n",$2);}' $cycle/pgdtable
 		awk '$1=="'$conf'" {printf("pgdfa=../%s/%s\n",$2,$3);}' $cycle/pgdfatable
 		awk -v dd=$const/anasurfex '$1=="'$conf'" {
@@ -432,6 +431,13 @@ do
 	mkdir -p $ddcy/$conf
 
 	cp $config/IFSenv.txt $config/env.sh $ddcy/$conf
+	if [ -s $config/$bin.nml ]
+	then
+		cp $config/$bin.nml $ddcy/$conf/vide.nml
+	else
+		cp $config/vide.nml $ddcy/$conf
+	fi
+
 	sed -e "s:_name:$name:g" -e "s:_ntaskt:$ntaskt:g" -e "s:_ntasks:$ntask:g" \
 		-e "s:_ntaskio:$ntaskio:g" -e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
 		-e "s:_nthreads:$nthread:g" -e "s:_maxmem:$mem:g" -e "s:_wall:$wall:g" \

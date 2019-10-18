@@ -10,6 +10,15 @@
 #SBATCH -o _name.log
 #SBATCH --export=_varexp
 
+cpnam()
+{
+	cp vide.nml $2
+	tmpnam=$(mktemp tmpXXX.nam)
+	cp $1 $tmpnam
+	xpnam --dfile=$tmpnam --inplace $2
+	unlink $tmpnam
+}
+
 if [ "$SLURM_JOB_NAME" ]
 then
 	printf "SLURM job card:
@@ -115,7 +124,7 @@ then
 fi
 
 echo -e "\nGetting main namelist"
-cp $nam fort.4
+cpnam $nam fort.4
 
 # conf IFS
 lnv fort.4 fort.25
@@ -205,22 +214,20 @@ then
 	cat mpiOK | xargs ls -l
 fi
 
-if [ "$fcnam" ]
+if [ "$fcnam" ] && [ ! -f mpifcOK ]
 then
 	echo -e "\nLaunching other jobs"
-	if [ ! -f mpifcOK ]
-	then
-		rm -f mpifc.out mpifc.err
-		for fnam in $fcnam*
-		do
-			echo -e "\n. job with namelist $fnam"
-			cp $fnam fort.4
-			mpiexe $bin >> mpifc.out 2>> mpifc.err
-			find -type f -newer fort.4 | grep -vE $lstRE >> mpifcOK
-		done
+	rm -f mpifc.out mpifc.err
+	for fnam in $fcnam*
+	do
+		echo -e "\n. job with namelist $fnam"
+		cpnam $fnam fort.4
 
-		cat mpifcOK | xargs ls -l
-	fi
+		mpiexe $bin >> mpifc.out 2>> mpifc.err
+		find -type f -newer fort.4 | grep -vE $lstRE >> mpifcOK
+	done
+
+	cat mpifcOK | xargs ls -l
 
 	cp $nam fort.4
 fi

@@ -66,7 +66,7 @@ comm -23 info/validconfs.txt info/mitconfs.txt | grep -E '.+' &&
 	echo "Attention : anciennes/nouvelles conf absentes de mitraillette" >&2
 
 mkdir -p $cy/namelist $cy/quadnam $cy/selnam $cy/diffnam $cy/fpnam $cy/fcnam \
-	$cy/deltanam
+	$cy/deltanam $cy/deltaquad
 
 echo "Valeurs fixes en namelist, delta namelist"
 rm -f $cy/namelist/* $cy/fcnam/* $cy/deltanam/*
@@ -136,8 +136,13 @@ do
 	fi
 
 	# conversion deltanam : suppression namelists vides et espaces
-	cat $cy/namelist/$conf.nam | tr -d '\t' | tr '\n' '\t' | sed -re 's:&\w+\s+/\s*::g' \
-		-e 's:\t+:\n:g' > $cy/deltanam/$conf.nam
+	cat $cy/namelist/$conf.nam | tr -d '\t' | tr '\n' '\t' | \
+		sed -re 's:&\w+\s+/\s*::g' -e 's:\t+:\n:g' > $cy/deltanam/$conf.nam
+	if [ -f $cy/quadnam/$conf.nam ]
+	then
+		cat $cy/quadnam/$conf.nam | tr -d '\t' | tr '\n' '\t' | \
+			sed -re 's:&\w+\s+/\s*::g' -e 's:\t+:\n:g' > $cy/deltaquad/$conf.nam
+	fi
 done < config/profil_table
 rm val.tmp
 

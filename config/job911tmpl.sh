@@ -10,6 +10,15 @@
 #SBATCH -o _name.log
 #SBATCH --export=_varexp
 
+cpnam()
+{
+	cp vide.nml $2
+	tmpnam=$(mktemp tmpXXX.nam)
+	cp $1 $tmpnam
+	xpnam --dfile=$tmpnam --inplace $2
+	unlink $tmpnam
+}
+
 if [ "$SLURM_JOB_NAME" ]
 then
 	printf "SLURM job card:
@@ -56,7 +65,7 @@ fi
 echo -e "\nStack limit: $(ulimit -s)"
 
 echo -e "\nGetting main namelist $nam"
-cp $nam fort.4
+cpnam $nam fort.4
 
 echo -e "\nLaunch MPI job"
 mpiexe $bin > mpi.out 2> mpi.err

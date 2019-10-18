@@ -10,6 +10,15 @@
 #SBATCH -o _name.log
 #SBATCH --export=_varexp
 
+cpnam()
+{
+	cp vide.nml $2
+	tmpnam=$(mktemp tmpXXX.nam)
+	cp $1 $tmpnam
+	xpnam --dfile=$tmpnam --inplace $2
+	unlink $tmpnam
+}
+
 if [ "$SLURM_JOB_NAME" ]
 then
 	printf "SLURM job card:
