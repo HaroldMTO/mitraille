@@ -155,13 +155,13 @@ then
 		fi
 
 		# reset initial namelists
-		cp $nam fort.4
+		cpnam $nam fort.4
 		cp $selnam $fout
 		mv ICMSHARPE+0000.sfx Const.Clim.sfx
 
 		echo -e "\nMake namelist for PREP from delta file:"
 		ls ${diffnam}_CONVPREP.nam
-		cp $nam fort.4
+		cpnam $nam fort.4
 		xpnam --dfile="${diffnam}_CONVPREP.nam" --inplace fort.4
 
 		echo -e "\nLaunch MPI job"
@@ -173,7 +173,7 @@ then
 		fi
 
 		# reset initial namelists
-		cp $nam fort.4
+		cpnam $nam fort.4
 		mv ICMSHARPE+0000.sfx ICMSHARPEINIT.sfx
 
 		echo -e "\nChange orography in PGD (Const.Clim.sfx)"
@@ -229,7 +229,7 @@ then
 
 	cat mpifcOK | xargs ls -l
 
-	cp $nam fort.4
+	cpnam $nam fort.4
 fi
 
 if [ "$diffnam" ]

@@ -320,16 +320,13 @@ do
 	fi
 
 	case $conf in
-		*_PGDC_*)
-			echo "--> by-passing PGDC conf $conf" >&2
-			continue;;
 		*_PGD*) name=pgd;;
 		*_DILA*) name=dila;;
 		GM_*) name=arpege;;
 		GE_*) name=ifs;;
-		L[123]_*) name=alaro;;
+		L[123]_*LACE*|L[123]_*_ALR*) name=alaro;;
+		L[123]_*) name=arome;;
 		*)
-			echo "Warning: unknown job name for $conf, set name to 'model'"
 			name=model;;
 	esac
 
@@ -413,7 +410,7 @@ do
 			sed -re 's:.+ (.+) .+:\1:')
 		if [ -n "$init" -a ! -s "$init" ]
 		then
-			echo "--> IC file missing (cont'): $conf '$init'"
+			echo "Warning: IC file missing (cont'd): '$init'" >&2
 			continue
 		fi
 

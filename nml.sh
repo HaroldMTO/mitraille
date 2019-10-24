@@ -121,13 +121,20 @@ do
 		sed -rf val.tmp $nml > $cy/namelist/$conf.nam
 	elif echo $nml | grep -qE '_fp\.nam'
 	then
-		sed -rf val.tmp -e "s/val_sitr/300./" -e "s/val_sipr/100000./" \
+		cp val.tmp chlev.tmp
+		cat >> chlev.tmp <<-EOF
+			s/(&namdyna)/\1\n   lsettls=.false.,/i
+			s/(lsettls)\w*=\.true\./\1=.false./i
+			s/(rcmslp0)=.+/\1=0.,/i
+		EOF
+
+		sed -rf chlev.tmp -e "s/val_sitr/300./" -e "s/val_sipr/100000./" \
 			${nml/_fp/_fc} > $cy/fcnam/$conf.nam1
-		sed -rf val.tmp -e "s/val_sitr/350./" -e "s/val_sipr/100000./" \
+		sed -rf chlev.tmp -e "s/val_sitr/350./" -e "s/val_sipr/100000./" \
 			${nml/_fp/_fc} > $cy/fcnam/$conf.nam2
-		sed -rf val.tmp -e "s/val_sitr/300./" -e "s/val_sipr/80000./" \
+		sed -rf chlev.tmp -e "s/val_sitr/300./" -e "s/val_sipr/80000./" \
 			${nml/_fp/_fc} > $cy/fcnam/$conf.nam3
-		sed -f val.tmp $nml > $cy/namelist/$conf.nam
+		sed -rf chlev.tmp $nml > $cy/namelist/$conf.nam
 	elif echo $nml | grep -qE 'selnam_(dila|pgd)'
 	then
 		cp $nml $cy/namelist/$conf.nam
@@ -144,7 +151,7 @@ do
 			sed -re 's:&\w+\s+/\s*::g' -e 's:\t+:\n:g' > $cy/deltaquad/$conf.nam
 	fi
 done < config/profil_table
-rm val.tmp
+rm -f val.tmp chlev.tmp
 
 echo "Déplacement/conversion selnam"
 grep -E "/.+\.selnam" old/$cy/jobs/* | grep -vE "selnam_(fp|dila|pgd)|\.diff" |\

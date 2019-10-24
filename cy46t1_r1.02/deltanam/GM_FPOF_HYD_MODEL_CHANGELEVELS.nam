@@ -34,6 +34,7 @@
    NPROMA=-50,
  /
  &NAMDYNA
+   lsettls=.false.,
    LAPRXPK=.FALSE.,
  /
  &NAMFA
@@ -116,16 +117,16 @@
    LDFI=.FALSE.,
  /
  &NAMPAR0
-   MBX_SIZE=__MBX_SIZE__,
+   MBX_SIZE=1024000000,
    NOUTPUT=1,
-   NPROC=__NTASKS__,
+   NPROC=8,
    MP_TYPE=2,
    LOPT_SCALAR=.TRUE.,
    NPRINTLEV=1,
  /
  &NAMPAR1
-   NSTRIN=__NTASKS__,
-   NSTROUT=__NTASKS__,
+   NSTRIN=8,
+   NSTROUT=8,
    NCOMBFLEN=1800000,
    LEQ_REGIONS=.FALSE.,
  /

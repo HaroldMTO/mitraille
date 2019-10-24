@@ -75,7 +75,7 @@ lnv $ecoclimap/* .
 echo -e "\nLinking constants for Surfex" # TAG CONST
 
 echo -e "\nGetting namelist $nam"
-cp $nam OPTIONS.nam
+cpnam $nam OPTIONS.nam
 
 echo -e "\nLaunch MPI job"
 if [ ! -f mpiOK ]

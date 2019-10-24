@@ -127,7 +127,7 @@
    NTLAG=3,
    NVLAG=3,
    NWLAG=3,
-   RCMSLP0=1.,
+   RCMSLP0=0.,
    REPS1=0.,
    REPS2=0.,
    REPSM1=0.,
@@ -142,6 +142,7 @@
    RDAMPDIV=2.,
  /
  &NAMDYNA
+   lsettls=.false.,
    LAPRXPK=.TRUE.,
    LSLHD_W=.FALSE.,
    LSLHD_T=.FALSE.,
@@ -152,9 +153,9 @@
    LNESC=.FALSE.,
    LNESCT=.FALSE.,
    LNESCV=.FALSE.,
-   LSETTLS=.TRUE.,
-   LSETTLST=.TRUE.,
-   LSETTLSV=.TRUE.,
+   LSETTLS=.false.,
+   LSETTLS=.false.,
+   LSETTLS=.false.,
  /
  &NAMDYNCORE
  /
