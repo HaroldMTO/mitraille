@@ -138,8 +138,9 @@ then
 	# restart option: only for conf with SURFEX for the moment
 	if [ "$diffnam" ]
 	then
+		mkdir -p pgdprep
 		# mandatory PGD specific environment: DR_HOOK_NOT_MPI
-		DR_HOOK_NOT_MPI=1 
+		export DR_HOOK_NOT_MPI=1
 
 		echo -e "\nMake restart namelists for PGD from delta files:"
 		ls ${diffnam}_CONVPGD.nam ${diffnam}_CONVPGD.selnam_exseg1
@@ -147,17 +148,13 @@ then
 		xpnam --dfile="${diffnam}_CONVPGD.selnam_exseg1" --inplace $fout
 
 		echo -e "\nLaunch MPI job"
-		if [ ! -f mpipgdOK ]
+		if [ ! -f pgdprep/Const.Clim.sfx ]
 		then
 			mpiexe $bin > mpipgd.out 2> mpipgd.err
-			find -type f -newer $fout | grep -vE $lstRE > mpipgdOK
-			cat mpipgdOK | xargs ls -l
-		fi
+			find -type f -newer $fout | grep -vE $lstRE | xargs ls -l
 
-		# reset initial namelists
-		cpnam $nam fort.4
-		cp $selnam $fout
-		mv ICMSHARPE+0000.sfx Const.Clim.sfx
+			mv ICMSHARPE+0000.sfx pgdprep/Const.Clim.sfx
+		fi
 
 		echo -e "\nMake namelist for PREP from delta file:"
 		ls ${diffnam}_CONVPREP.nam
@@ -165,19 +162,20 @@ then
 		xpnam --dfile="${diffnam}_CONVPREP.nam" --inplace fort.4
 
 		echo -e "\nLaunch MPI job"
-		if [ ! -f mpiprepOK ]
+		if [ ! -f pgdprep/ICMSHARPEINIT.sfx ]
 		then
 			mpiexe $bin > mpiprep.out 2> mpiprep.err
-			find -type f -newer fort.4 | grep -vE $lstRE > mpiprepOK
-			cat mpiprepOK | xargs ls -l
+			find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
+
+			mv ICMSHARPE+0000.sfx pgdprep/ICMSHARPEINIT.sfx
 		fi
+
+		echo -e "\nChange orography in PGD (Const.Clim.sfx)"
+		cp -f pgdprep/* .
+		$LFITOOLS testfa < $orog
 
 		# reset initial namelists
 		cpnam $nam fort.4
-		mv ICMSHARPE+0000.sfx ICMSHARPEINIT.sfx
-
-		echo -e "\nChange orography in PGD (Const.Clim.sfx)"
-		DR_HOOK_NOT_MPI=1 $LFITOOLS testfa < $orog
 	fi
 fi
 
