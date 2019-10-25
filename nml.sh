@@ -135,7 +135,7 @@ do
 		sed -rf chlev.tmp -e "s/val_sitr/300./" -e "s/val_sipr/80000./" \
 			${nml/_fp/_fc} > $cy/fcnam/$conf.nam3
 		sed -rf chlev.tmp $nml > $cy/namelist/$conf.nam
-	elif echo $nml | grep -qE 'selnam_(dila|pgd)'
+	elif echo $nml | grep -qE 'selnam_pgd'
 	then
 		cp $nml $cy/namelist/$conf.nam
 	else
@@ -178,9 +178,9 @@ grep -E '^ *\$E?CP.+/.+\.selnam_fp' old/$cy/jobs/* | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP .+/([^ ]+) +(.+):\1 \2 \3:' | \
 	sed -re 's:([^ ]+) \1\.:\1 arpege.:' | sort > $cy/fptable
 echo "L3_FPOF_HYD_GPLALON_OPE2_ARPPHYISBA alaro.selnam_fp_0 sel_0" >> $cy/fptable
-if [ ! -s alaro.selnam_fp_0 ]
+if [ ! -s old/$cy/namelist/alaro.selnam_fp_0 ]
 then
-	cp old/$cy/namelist/L3_FPOF_HYD_GPLALON_OPE2_ARPPHYISBA.nam \
+	cp $cy/namelist/L3_FPOF_HYD_GPLALON_OPE2_ARPPHYISBA.nam \
 		old/$cy/namelist/alaro.selnam_fp_0
 fi
 rm -f $cy/fpnam/*
