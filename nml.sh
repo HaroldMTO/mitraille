@@ -221,8 +221,8 @@ grep -E '^ *\$E?CP +.+ +(Const\.Clim(\.sfx)?|PGDFILE_.+\.fa) *$' \
 grep -E '^ *\$E?CP +.+ +const\.clim(\.\w+)+ *$' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(.+) *$:\1 \2 \3:' |\
 	sort > $cy/climfptable
-grep -E '^ *\$E?CP +.+ +matrix\.fil\.' old/$cy/jobs/*.sh | \
-	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(matrix\.fil\.\w+):\1 \2 \3:' |\
+grep -E '^ *\$E?CP +.+ +(matrix\.fil\.|MAT(DILA|CONT))' old/$cy/jobs/*.sh | \
+	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(matrix\.fil\.\w+|MAT(DILA|CONT)):\1 \2 \3:' |\
 	sort > $cy/filtertable
 grep -E '^ *\$E?CP +.+ +\w+\.(hdr|dir) *$' old/$cy/jobs/*.sh | \
 	sed -re 's:.+/(.+)\.sh\: *\$E?CP +.+/([^ ]+) +(.+\.(hdr|dir)):\1 \2 \3:' | \
