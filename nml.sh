@@ -96,8 +96,6 @@ do
 		s/__MP_TYPE__/2/
 		s/__LOPT_SCALAR__/.TRUE./
 		s/__MBX_SIZE__|substr6/1024000000/
-		s/__NTASK_IO__/$ntaskio/
-		s/__NTASKS__|substrC/$ntask/
 	EOF
 
 	if echo $conf | grep -qE '_DFIBIAS_'

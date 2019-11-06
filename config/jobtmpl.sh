@@ -14,7 +14,7 @@ cpnam()
 {
 	cp vide.nml $2
 	tmpnam=$(mktemp tmpXXX.nam)
-	cp $1 $tmpnam
+	sed -re "s/__NTASK_IO__/_ntaskio/" -e "s/__NTASKS__/_ntasks/" $1 > $tmpnam
 	xpnam --dfile=$tmpnam --inplace $2
 	unlink $tmpnam
 }
