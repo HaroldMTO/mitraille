@@ -34,7 +34,6 @@ alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --'
 alias lnv='ln -sfv'
 
 set -e
-rm -f core.*
 
 echo -e "\nSetting job profile" #TAG PROFILE
 
@@ -298,7 +297,7 @@ echo -e "\nRemove large init files"
 [ -s EBAUCHE ] && rm ICMSHARPEINIT
 rm -f ICMSHARPEIMIN
 
-rm -f stdout.* stderr.*
+rm -f stdout.* stderr.* core.*
 
 echo -e "\nLog and profiling files:"
 ls -l _name.log NODE.001_01 env.txt mpi*.out mpi*.err

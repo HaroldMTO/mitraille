@@ -129,6 +129,7 @@ nn=1000
 nomp=100
 nj=0
 ref=""
+info=0
 force=0
 hpc=""
 
@@ -182,6 +183,7 @@ do
 			hpc=$2
 			shift
 			;;
+		-info) info=1;;
 		-force) force=1;;
 		-h) help=1;;
 		*)
@@ -248,8 +250,8 @@ fi
 
 if [ -d $cycle ]
 then
-	echo "--> use user's jobs directory $cycle"
 	cycle=$(cd $cycle > /dev/null && pwd)
+	echo "--> use user's jobs directory $cycle"
 else
 	echo $cycle | grep -vqE '^/' && cycle=$mitra/$cycle
 	ls -d $cycle >/dev/null
@@ -287,6 +289,17 @@ trap 'rm -r $tmpdir' 0
 
 cd $tmpdir
 
+if [ $info -eq 1 ]
+then
+	find $ddcy -name jobOK -printf "%h\n" | sed -re "s:$dirout/::" | sort > jok
+	echo "Jobs completed:"
+	cat jok
+	echo "Jobs failed:"
+	find $ddcy -name mpi\*.out -printf "%h\n" | sed -re "s:$dirout/::" | sort | \
+		grep -vf jok
+	exit
+fi
+
 grep -vE '^\s*#' $config/profil_table | \
 	while read conf bin mem wall cpu ntaskio ntaskt nnodes nthread
 do
@@ -301,6 +314,7 @@ do
 			$hpc:$ddcy/$conf/NODE.001_01 $ddcy/$conf 2>/dev/null || true
 	fi
 
+	echo $conf >> jobmatch.txt
 	if [ -e $ddcy/$conf/jobOK ]
 	then
 		echo "--> job $conf already completed"
@@ -463,3 +477,5 @@ do
 done
 
 [ -s jobs.txt ] && jobwait
+
+[ -s jobmatch.txt ] && echo "Info: no job matched the conditions"
