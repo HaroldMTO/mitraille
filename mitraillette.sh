@@ -478,4 +478,4 @@ done
 
 [ -s jobs.txt ] && jobwait
 
-[ -s jobmatch.txt ] && echo "Info: no job matched the conditions"
+[ ! -s jobmatch.txt ] && echo "Info: no job matched the conditions"
