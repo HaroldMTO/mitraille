@@ -10,14 +10,7 @@
 #SBATCH -o _name.log
 #SBATCH --export=_varexp
 
-cpnam()
-{
-	cp vide.nml $2
-	tmpnam=$(mktemp tmpXXX.nam)
-	sed -re "s/__NTASK_IO__/_ntaskio/" -e "s/__NTASKS__/_ntasks/"  $1 $tmpnam
-	xpnam --dfile=$tmpnam --inplace $2
-	unlink $tmpnam
-}
+#TAG FUNCTION
 
 if [ "$SLURM_JOB_NAME" ]
 then
@@ -85,7 +78,7 @@ rm -f Const.Clim # error otherwise
 
 if [ "$quadnam" ]
 then
-	cpnam $quadnam fort.4
+	cpnam $quadnam vide.nml fort.4
 	echo -e "\nLaunch MPI 'quad' job"
 	sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=1:' -i fort.4
 	if [ ! -f mpiquadOK ]
@@ -98,7 +91,7 @@ then
 fi
 
 echo -e "\nGetting namelist for 'lin' jobs"
-cpnam $nam fort.4
+cpnam $nam vide.nml fort.4
 
 echo -e "\nLaunch MPI 'lin' job 1"
 sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=1:' -i fort.4

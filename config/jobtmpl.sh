@@ -10,14 +10,7 @@
 #SBATCH -o _name.log
 #SBATCH --export=_varexp
 
-cpnam()
-{
-	cp vide.nml $2
-	tmpnam=$(mktemp tmpXXX.nam)
-	sed -re "s/__NTASK_IO__/_ntaskio/" -e "s/__NTASKS__/_ntasks/" $1 > $tmpnam
-	xpnam --dfile=$tmpnam --inplace $2
-	unlink $tmpnam
-}
+#TAG FUNCTION
 
 if [ "$SLURM_JOB_NAME" ]
 then
@@ -123,7 +116,7 @@ then
 fi
 
 echo -e "\nGetting main namelist"
-cpnam $nam fort.4
+cpnam $nam vide.nml fort.4
 
 # conf IFS
 lnv fort.4 fort.25
@@ -157,7 +150,7 @@ then
 
 		echo -e "\nMake namelist for PREP from delta file:"
 		ls ${diffnam}_CONVPREP.nam
-		cpnam $nam fort.4
+		cpnam $nam vide.nml fort.4
 		xpnam --dfile="${diffnam}_CONVPREP.nam" --inplace fort.4
 
 		echo -e "\nLaunch MPI job"
@@ -174,7 +167,7 @@ then
 		$LFITOOLS testfa < $orog
 
 		# reset initial namelists
-		cpnam $nam fort.4
+		cpnam $nam vide.nml fort.4
 	fi
 fi
 
@@ -218,7 +211,7 @@ then
 	for fnam in $fcnam*
 	do
 		echo -e "\n. job with namelist $fnam"
-		cpnam $fnam fort.4
+		cpnam $nam vide.nml fort.4
 
 		mpiexe $bin >> mpifc.out 2>> mpifc.err
 		find -type f -newer fort.4 | grep -vE $lstRE >> mpifcOK
@@ -226,7 +219,7 @@ then
 
 	cat mpifcOK | xargs ls -l
 
-	cpnam $nam fort.4
+	cpnam $nam vide.nml fort.4
 fi
 
 if [ "$diffnam" ]

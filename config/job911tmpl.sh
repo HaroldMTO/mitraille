@@ -10,14 +10,7 @@
 #SBATCH -o _name.log
 #SBATCH --export=_varexp
 
-cpnam()
-{
-	cp vide.nml $2
-	tmpnam=$(mktemp tmpXXX.nam)
-	sed -re "s/__NTASK_IO__/_ntaskio/" -e "s/__NTASKS__/_ntasks/"  $1 $tmpnam
-	xpnam --dfile=$tmpnam --inplace $2
-	unlink $tmpnam
-}
+#TAG FUNCTION
 
 if [ "$SLURM_JOB_NAME" ]
 then
@@ -65,7 +58,7 @@ fi
 echo -e "\nStack limit: $(ulimit -s)"
 
 echo -e "\nGetting main namelist $nam"
-cpnam $nam fort.4
+cpnam $nam vide.nml fort.4
 
 echo -e "\nLaunch MPI job"
 mpiexe $bin > mpi.out 2> mpi.err

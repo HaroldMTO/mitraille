@@ -10,14 +10,7 @@
 #SBATCH -o _name.log
 #SBATCH --export=_varexp
 
-cpnam()
-{
-	cp vide.nml $2
-	tmpnam=$(mktemp tmpXXX.nam)
-	sed -re "s/__NTASK_IO__/_ntaskio/" -e "s/__NTASKS__/_ntasks/"  $1 $tmpnam
-	xpnam --dfile=$tmpnam --inplace $2
-	unlink $tmpnam
-}
+#TAG FUNCTION
 
 if [ "$SLURM_JOB_NAME" ]
 then
@@ -75,7 +68,7 @@ lnv $ecoclimap/* .
 echo -e "\nLinking constants for Surfex" # TAG CONST
 
 echo -e "\nGetting namelist $nam"
-cpnam $nam OPTIONS.nam
+cpnam $nam vide.nml OPTIONS.nam
 
 echo -e "\nLaunch MPI job"
 if [ ! -f mpiOK ]
