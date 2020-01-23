@@ -68,11 +68,12 @@ then
 fi
 
 echo "Looking for jobs log files..."
+temp=$(mktemp elapse.XXX)
 grep -A 2 -iE ' +elapsed +' $cycle/*/*.log | grep COMPLETED | \
-	sed -re 's:.+/(.+)/.+\.log\-( +[^ ]+){7} +([0-9\:]+).+:\1 \3:' > elapse.txt
+	sed -re 's:.+/(.+)/.+\.log\-( +[^ ]+){7} +([0-9\:]+).+:\1 \3:' > $temp
 
 type R > /dev/null 2>&1 || module -s load intel R > /dev/null 2>&1
 
-R --slave -f $mitra/profils.R --args factor=$factor
+R --slave -f $mitra/profils.R --args file=$temp factor=$factor
 
-rm elapse.txt
+unlink $temp

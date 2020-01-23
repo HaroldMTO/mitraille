@@ -4,8 +4,6 @@ set -e
 
 mitra=~/mitraille
 
-alias spdiff='~marguina/mitraille/diff'
-
 usage()
 {
 	printf "
@@ -56,7 +54,7 @@ file .bashrc).
 SSH protocol for connexion. Master mode is used for optimization reasons.
 
 Dependencies:
-	None
+	utility normdiff.sh
 "
 }
 
@@ -81,9 +79,7 @@ logdiff()
 		return
 	fi
 
-	spdiff $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01 | grep -vE '^$' | \
-		sed -re 's:^# +:STEP(s)\t:' -e 's: +$::' -e 's: {2,}([A-Z]+):\t\1:g' \
-		-e 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g'
+	$mitra/normdiff.sh $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01
 }
 
 jobwait()
@@ -109,6 +105,8 @@ jobwait()
 		done
 
 		sacct -nPXj $jobid -o state | grep -vi COMPLETED && continue
+
+		grep -iE '\<nan\>' $ddcy/$conf/NODE.001_01 || true
 
 		[ -z "$ref" ] && continue
 
@@ -318,6 +316,7 @@ do
 	if [ -e $ddcy/$conf/jobOK ]
 	then
 		echo "--> job $conf already completed"
+		grep -iE '\<nan\>' $ddcy/$conf/NODE.001_01 || true
 		[ "$ref" ] && logdiff
 
 		continue

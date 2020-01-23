@@ -14,6 +14,7 @@ install:
 	make mitra
 	make $B/mitraillette.sh
 	make $B/mitratime.sh
+	make $B/normdiff.sh
 	if git status >/dev/null 2>&1; then \
 		grep -q $(shell git log -1 --pretty=format:%h 2>/dev/null) $P/version || \
 			git log -1 --oneline >> $P/version; \
@@ -31,3 +32,7 @@ $B/mitraillette.sh: mitraillette.sh
 $B/mitratime.sh: mitratime.sh
 	sed -re "s:mitra=.+:mitra=$P:" mitratime.sh > $B/mitratime.sh
 	chmod a+x $B/mitratime.sh
+
+$B/normdiff.sh: normdiff.sh
+	sed -re "s:mitra=.+:mitra=$P:" normdiff.sh > $B/normdiff.sh
+	chmod a+x $B/normdiff.sh

@@ -4,7 +4,7 @@ args = strsplit(commandArgs(trailingOnly=TRUE),split="=")
 cargs = lapply(args,function(x) strsplit(x[-1],split=":")[[1]])
 names(cargs) = sapply(args,function(x) x[1])
 
-temps = read.table("elapse.txt",col.names=c("conf","tei"))
+temps = read.table(cargs$file,col.names=c("conf","tei"))
 x = as.numeric(as.difftime(temps$tei),units="mins")
 x2 = .5 + x + sqrt(5+2*x)
 temps$tei2 = round(x2,-floor(log10(x2)))
