@@ -12,8 +12,8 @@ Description:
 
 Usage:
 	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-opt opt] [-noenv] \
-[-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] [-force] \
-[-h]
+[-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] [-info] \
+[-prof] [-force] [-h]
 
 Arguments:
 	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to \
@@ -31,6 +31,8 @@ environment is set from shell's startup, as login shell (-> .profile).
 	-ref: path to jobs reference output
 	-hpc: let job conf completion and comparison (ifever asked for) being \
 looked for on HPC named MACHINE as an alternative to job local directory
+	-info: only print info on jobs that have succeeded and failed
+	-prof: only print info on jobs profiles
 	-force: keep on submitting jobs even if any previously submitted job failed
 	-h: print this help and exit normally
 
@@ -128,6 +130,7 @@ nomp=100
 nj=0
 ref=""
 info=0
+prof=0
 force=0
 hpc=""
 
@@ -182,6 +185,7 @@ do
 			shift
 			;;
 		-info) info=1;;
+		-prof) prof=1;;
 		-force) force=1;;
 		-h) help=1;;
 		*)
@@ -305,6 +309,13 @@ do
 	[ -n "$conf0" ] && echo $conf | grep -qvE "$conf0" && continue
 	[ $wall -gt $time -o $nnodes -gt $nn -o $nthread -gt $nomp ] && continue
 
+	echo $conf >> jobmatch.txt
+	if [ $prof -eq 1 ]
+	then
+		echo -e "$conf:\t$wall' $nnodes nodes, ${ntaskt}x$nthread MPI/OMP"
+		continue
+	fi
+
 	if [ ! -e $ddcy/$conf/jobOK ] && [ "$hpc" ]
 	then
 		mkdir -p $ddcy/$conf
@@ -312,7 +323,6 @@ do
 			$hpc:$ddcy/$conf/NODE.001_01 $ddcy/$conf 2>/dev/null || true
 	fi
 
-	echo $conf >> jobmatch.txt
 	if [ -e $ddcy/$conf/jobOK ]
 	then
 		echo "--> job $conf already completed"
