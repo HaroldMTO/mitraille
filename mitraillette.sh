@@ -448,13 +448,14 @@ do
 		cp $config/vide.nml $ddcy/$conf
 	fi
 
-	sed -e "s:_name:$name:g" -e "s:_ntaskt:$ntaskt:g" -e "s:_ntasks:$ntask:g" \
-		-e "s:_ntaskio:$ntaskio:g" -e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
+	sed -e "/TAG FUNC/r $config/cpnam.sh" $tmpl > $ddcy/$conf/$name.sh
+	sed -i -e "s:_name:$name:g" -e "s:_ntaskt:$ntaskt:g" \
+		-e "s:_ntasks:$ntask:g" -e "s:_ntaskio:$ntaskio:g" \
+		-e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
 		-e "s:_nthreads:$nthread:g" -e "s:_maxmem:$mem:g" -e "s:_wall:$wall:g" \
-		-e "s:_varexp:$env:" -e "/TAG FUNC/r $config/cpnam.sh" \
-		-e "/TAG PROFILE/r job.profile" -e "/TAG CONST/r const.txt" \
-		-e "/TAG CLIM/r clim.txt" -e "/TAG FPOS/r fpos.txt" \
-		-e "/TAG INIT/r init.txt" $tmpl > $ddcy/$conf/$name.sh
+		-e "s:_varexp:$env:" -e "/TAG PROFILE/r job.profile" \
+		-e "/TAG CONST/r const.txt" -e "/TAG CLIM/r clim.txt" \
+		-e "/TAG FPOS/r fpos.txt" -e "/TAG INIT/r init.txt" $ddcy/$conf/$name.sh
 
 	[ $nj -eq 0 ] && continue
 
