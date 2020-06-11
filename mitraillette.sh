@@ -13,7 +13,7 @@ Description:
 Usage:
 	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-opt opt] [-noenv] \
 [-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] [-info] \
-[-prof] [-force] [-h]
+[-prof] [-force] [-i] [-h]
 
 Arguments:
 	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to \
@@ -34,6 +34,7 @@ looked for on HPC named MACHINE as an alternative to job local directory
 	-info: only print info on jobs that have succeeded and failed
 	-prof: only print info on jobs profiles
 	-force: keep on submitting jobs even if any previously submitted job failed
+	-i: submit jobs in interactive mode. Only small jobs are allowed (1 node, < 20 omp).
 	-h: print this help and exit normally
 
 Details:
@@ -132,6 +133,7 @@ ref=""
 info=0
 prof=0
 force=0
+inter=0
 hpc=""
 
 [ $# -eq 0 ] && help=1
@@ -187,6 +189,7 @@ do
 		-info) info=1;;
 		-prof) prof=1;;
 		-force) force=1;;
+		-i) inter=1;;
 		-h) help=1;;
 		*)
 			echo "Error: unknown option '$1'" >&2
@@ -468,6 +471,20 @@ do
 		-e "/TAG FPOS/r fpos.txt" -e "/TAG INIT/r init.txt" $ddcy/$conf/$name.sh
 
 	[ $nj -eq 0 ] && continue
+
+	if [ $inter -eq 1 ]
+	then
+		if [ $nnodes -gt 1 -o $((ntaskt*nthread)) -gt 20 ]
+		then
+			echo "Error: job too big for interactive submission" >&2
+			exit 1
+		fi
+
+		echo "--> interactive job submission for conf $conf"
+		chmod u+x $ddcy/$conf/$name.sh
+		(cd $ddcy/$conf; $name.sh)
+		continue
+	fi
 
 	jobid=$(cd $ddcy/$conf; sbatch $name.sh)
 	jobid=$(echo $jobid | tail -1 | awk '{print $NF}')
