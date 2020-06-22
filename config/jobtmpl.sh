@@ -113,6 +113,7 @@ then
 
 	# dirty: 0 and 1 together (sometimes)
 	[ $i -eq 1 ] && lnv $fic $(printf "ELSCFARPEALBC%03d" $i)
+	[ ! -s ELSCFARPEALBC999 ] && lnv $fic ELSCFARPEALBC999
 fi
 
 echo -e "\nGetting main namelist"
