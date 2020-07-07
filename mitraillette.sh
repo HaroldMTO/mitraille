@@ -82,7 +82,7 @@ logdiff()
 		return
 	fi
 
-	$mitra/normdiff.sh $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01
+	normdiff.sh $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01
 }
 
 jobwait()

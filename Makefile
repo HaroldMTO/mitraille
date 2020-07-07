@@ -23,6 +23,7 @@ install:
 mitra:
 	mkdir -p $P
 	sed -re "s:mitra *=.+:mitra = \"$P\":" profils.R > $P/profils.R
+	sed -re "s:mitra *=.+:mitra = \"$P\":" gpdiff.R > $P/gpdiff.R
 	cp -pruv const config cy4[4567]* $P
 
 $B/mitraillette.sh: mitraillette.sh
