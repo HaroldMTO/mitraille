@@ -23,11 +23,9 @@ Details:
 digits).
 
 Dependencies:
-	R software, executable ~marguina/mitraille/diff
+	R software, executable ~petithommeh/bin/diff
 "
 }
-
-alias spdiff='~marguina/mitraille/diff'
 
 fic1=""
 fic2=""
