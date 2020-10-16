@@ -64,17 +64,19 @@ lnv $c923/RELIEF_G/GTOPT030/* .
 
 echo -e "\nLinking clims for Surfex (if required)" # TAG CLIM
 
+rm -f Neworog # error otherwise
+
 if [ "$pgd" ]
 then
 	echo -e "\nGet PGD orography (local file $pgd)"
-	cp $pgd Neworog
+	cp -v $pgd Neworog
 elif [ "$pgdfa" ]
 then
 	echo -e "\nGet PGD orography (distant file $pgdfa)"
-	cp $pgdfa Neworog
+	cp -v $pgdfa Neworog
 fi
 
-rm -f Const.Clim # error otherwise
+rm -f Const.Clim Const.Clim.?? # error otherwise
 
 if [ "$quadnam" ]
 then
@@ -96,24 +98,31 @@ cpnam $nam vide.nml fort.4
 echo -e "\nLaunch MPI 'lin' job 1"
 sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=1:' -i fort.4
 mpiexe $bin > mpi1.out 2> mpi1.err
-find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
+find -type f -newer fort.4 | grep -vE $lstRE > mpi1OK
+cat mpi1OK | xargs ls -l
 rm -f Neworog # ???
 
 echo -e "\nLaunch MPI 'lin' job 2"
 lnv $c923/SURFACE_G/version2/i3e/* .
 sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=2:' -i fort.4
 mpiexe $bin > mpi2.out 2> mpi2.err
-find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
+find -type f -newer fort.4 | grep -vE $lstRE > mpi2OK
+cat mpi2OK | xargs ls -l
 
-echo -e "\nLaunch MPI 'lin' job 3"
+echo -e "\nLinking 'N108' binary files"
 lnv $c923/N108/i3e/* .
+
+echo -e "\nCopying file Const.Clim to all-months clims"
 for mm in 01 02 03 04 05 06 07 08 09 10 11 12
 do
-	cp Const.Clim Const.Clim.$mm
+	cp -v Const.Clim Const.Clim.$mm
 done
 
+echo -e "\nLaunch MPI 'lin' job 3"
 sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=3:' -i fort.4
 mpiexe $bin > mpi3.out 2> mpi3.err
+find -type f -newer fort.4 | grep -vE $lstRE > mpi3OK
+cat mpi3OK | xargs ls -l
 
 lnv $c923/SURFACE_G/version2/i3e/* .
 lnv $c923/SURFACE_L/EUROPEb_v1/i3e/* .
@@ -124,7 +133,7 @@ rm -f mpi[45689].*
 for mm in 01 02 06 12
 do
 	echo -e "\nClim - month $mm"
-	cp Const.Clim.$mm Const.Clim
+	cp -v Const.Clim.$mm Const.Clim
 
 	echo -e "\nLaunch MPI 'lin' job 4"
 	lnv veg${mm}_GL veg_GL
@@ -140,16 +149,18 @@ do
 	mpiexe $bin >> mpi5.out 2>> mpi5.err
 	find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 
-	echo -e "\nLaunch MPI 'lin' job 6"
+	echo -e "\nLaunch MPI 'lin' job 6 with modified grid"
 	for fic in $c923/CLIM_G/version2/i3e/*_${mm}_GL
 	do
 		lnv $fic $(basename ${fic/_${mm}_GL/_GL})
 	done
 
 	sed --follow-symlinks -re 's:^ *N923=[0-9]:N923=6:' -i fort.4
+	cp fort.4 fort.4.save
 	xpnam --dfile $gridnam -i fort.4
 	mpiexe $bin >> mpi6.out 2>> mpi6.err
 	find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
+	mv fort.4.save fort.4
 
 	echo -e "\nLaunch MPI 'lin' job 8"
 	lnv $c923/CLIM_G/ozone/ascii/abc_quadra_$mm abc_coef

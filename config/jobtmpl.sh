@@ -279,11 +279,13 @@ do
 		PF) ftype=$(echo $fic | sed -re 's:\./PFARPE(.+)\+[0-9]+.*:\1:');;
 	esac
 
+	ficarp=$(printf "ARPE.%04d.$ftype\n" $ech)
 	if [ "$ios" ] && [ $prefix = "ICMSH" -o $prefix = "PF" ]
 	then
-		lfi_move -pack -force $fic $(printf "ARPE.%04d.$ftype\n" $ech)
+		echo "lfi_move: $fic -> $ficarp"
+		lfi_move -pack -force $fic $ficarp
 	else
-		lnv $fic $(printf "ARPE.%04d.$ftype\n" $ech)
+		lnv $fic $ficarp
 	fi
 done
 
