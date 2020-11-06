@@ -268,7 +268,7 @@ fi
 
 echo -e "\nRename files"
 for fic in $(find -maxdepth 1 -name \*ARPE\* | \
-	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*+[0-9]{4}')
+	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*+[0-9]{4}$')
 do
 	ech=$(echo $fic | sed -re 's:.+\+0{,3}([0-9]{1,})(\.sfx)?:\1:')
 	prefix=$(echo $fic | sed -re 's:\./(.+)ARPE.+:\1:')
