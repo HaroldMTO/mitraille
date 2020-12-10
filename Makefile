@@ -15,6 +15,7 @@ install:
 	make $B/mitraillette.sh
 	make $B/mitratime.sh
 	make $B/normdiff.sh
+	make $B/statdiff.sh
 	if git status >/dev/null 2>&1; then \
 		grep -q $(shell git log -1 --pretty=format:%h 2>/dev/null) $P/version || \
 			git log -1 --oneline >> $P/version; \

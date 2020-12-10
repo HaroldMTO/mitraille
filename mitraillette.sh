@@ -13,7 +13,7 @@ Description:
 Usage:
 	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-opt opt] [-noenv] \
 [-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] [-info] \
-[-prof] [-force] [-i] [-h]
+[-prof] [-force] [-i] [-f] [-nogp] [-nostat] [-h]
 
 Arguments:
 	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to \
@@ -34,7 +34,12 @@ looked for on HPC named MACHINE as an alternative to job local directory
 	-info: only print info on jobs that have succeeded and failed
 	-prof: only print info on jobs profiles
 	-force: keep on submitting jobs even if any previously submitted job failed
-	-i: submit jobs in interactive mode. Only small jobs are allowed (1 node, < 20 omp).
+	-f: rerun jobs even when already completed
+	-i: submit jobs in interactive mode. Only small jobs are allowed (1 node, < \
+20 omp).
+	-nogp: in norms checking, activate -nogp option (no grid-point norms, cf \
+normdiff.sh)
+	-nostat: deactivate statistics checkings on data files produced by the jobs
 	-h: print this help and exit normally
 
 Details:
@@ -84,7 +89,9 @@ logdiff()
 		return
 	fi
 
-	$mitra/normdiff.sh $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01
+	$mitra/normdiff.sh $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01 $nogp
+
+	[ $stat -eq 0 ] && return
 
 	find $ref/$conf -name ARPE.\*.\* | grep -E '\.[0-9]{4}\.[A-Z0-9_]+$' > diff.txt || true
 	if [ ! -s diff.txt ]
@@ -155,7 +162,10 @@ ref=""
 info=0
 prof=0
 force=0
+rerun=0
 inter=0
+nogp=""
+stat=1
 hpc=""
 
 [ $# -eq 0 ] && help=1
@@ -211,6 +221,9 @@ do
 		-info) info=1;;
 		-prof) prof=1;;
 		-force) force=1;;
+		-nogp) nogp="-nogp";;
+		-nostat) stat=0;;
+		-f) rerun=1;;
 		-i) inter=1;;
 		-h) help=1;;
 		*)
@@ -346,6 +359,12 @@ do
 		mkdir -p $ddcy/$conf
 		scp -qo 'Controlpath=/tmp/ssh-%r@%h:%p' $hpc:$ddcy/$conf/jobOK \
 			$hpc:$ddcy/$conf/NODE.001_01 $ddcy/$conf 2>/dev/null || true
+	fi
+
+	if [ -e $ddcy/$conf/jobOK -a $rerun -eq 1 ]
+	then
+		echo "--> job $conf already completed, rerun asked"
+		rm $ddcy/$conf/*OK
 	fi
 
 	if [ -e $ddcy/$conf/jobOK ]
