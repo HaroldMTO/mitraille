@@ -13,7 +13,7 @@ Description:
 Usage:
 	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-opt opt] [-noenv] \
 [-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] [-info] \
-[-prof] [-force] [-i] [-h]
+[-prof] [-force] [-i] [-f] [-nogp] [-nostat] [-h]
 
 Arguments:
 	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to \
@@ -34,7 +34,12 @@ looked for on HPC named MACHINE as an alternative to job local directory
 	-info: only print info on jobs that have succeeded and failed
 	-prof: only print info on jobs profiles
 	-force: keep on submitting jobs even if any previously submitted job failed
-	-i: submit jobs in interactive mode. Only small jobs are allowed (1 node, < 20 omp).
+	-f: rerun jobs even when already completed
+	-i: submit jobs in interactive mode. Only small jobs are allowed (1 node, < \
+20 omp).
+	-nogp: in norms checking, activate -nogp option (no grid-point norms, cf \
+normdiff.sh)
+	-nostat: deactivate statistics checkings on data files produced by the jobs
 	-h: print this help and exit normally
 
 Details:
@@ -63,7 +68,9 @@ Dependencies:
 
 logdiff()
 {
-	if [ ! -e $ref/$conf/jobOK -o ! -s $ref/$conf/NODE.001_01 ] && [ "$hpc" ]
+	local fic ficref
+
+	if [ "$hpc" ] && [ ! -e $ref/$conf/jobOK -o ! -s $ref/$conf/NODE.001_01 ]
 	then
 		mkdir -p $ref/$conf
 		scp -qo 'Controlpath=/tmp/ssh-%r@%h:%p' $hpc:$ref/$conf/jobOK \
@@ -82,7 +89,29 @@ logdiff()
 		return
 	fi
 
-	normdiff.sh $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01
+	$mitra/normdiff.sh $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01 $nogp
+
+	[ $stat -eq 0 ] && return
+
+	find $ref/$conf -name ARPE.\*.\* | grep -E '\.[0-9]{4}\.[A-Z0-9_]+$' > diff.txt || true
+	if [ ! -s diff.txt ]
+	then
+		echo "--> no reference diff file to compare to"
+		return 1
+	fi
+
+	while read ficref
+	do
+		fic=$ddcy/$conf/$(basename $ficref)
+		[ -s $ficref.info ] || epy_what.py $ficref -o > $ficref.info 2> epy_what.err
+		[ -s $fic.info ] || epy_what.py $fic -o > $fic.info 2> epy_what.err
+		diff -q $ficref.info $fic.info || true
+		DR_HOOK=0 epy_stats.py -l $fic.info -D $ficref $fic -O $fic.diff 2> epy_stats.err
+		grep -E '^[A-Z0-9_]+ +-?[0-9]+' $fic.diff | grep -vE ' +(0\.0+E\+?0+ +){3,}' ||
+			true
+	done < diff.txt
+
+	$mitra/statdiff.sh $ddcy/$conf
 }
 
 jobwait()
@@ -109,7 +138,7 @@ jobwait()
 
 		sacct -nPXj $jobid -o state | grep -vi COMPLETED && continue
 
-		grep -iE '\<nan\>' $ddcy/$conf/NODE.001_01 || true
+		[ -s $ddcy/$conf/NODE.001_01 ] && grep -iE '\<nan\>' $ddcy/$conf/NODE.001_01 || true
 
 		[ -z "$ref" ] && continue
 
@@ -133,7 +162,10 @@ ref=""
 info=0
 prof=0
 force=0
+rerun=0
 inter=0
+nogp=""
+stat=1
 hpc=""
 
 [ $# -eq 0 ] && help=1
@@ -189,6 +221,9 @@ do
 		-info) info=1;;
 		-prof) prof=1;;
 		-force) force=1;;
+		-nogp) nogp="-nogp";;
+		-nostat) stat=0;;
+		-f) rerun=1;;
 		-i) inter=1;;
 		-h) help=1;;
 		*)
@@ -326,10 +361,16 @@ do
 			$hpc:$ddcy/$conf/NODE.001_01 $ddcy/$conf 2>/dev/null || true
 	fi
 
+	if [ -e $ddcy/$conf/jobOK -a $rerun -eq 1 ]
+	then
+		echo "--> job $conf already completed, rerun asked"
+		rm $ddcy/$conf/*OK
+	fi
+
 	if [ -e $ddcy/$conf/jobOK ]
 	then
 		echo "--> job $conf already completed"
-		grep -iE '\<nan\>' $ddcy/$conf/NODE.001_01 || true
+		[ -s $ddcy/$conf/NODE.001_01 ] && grep -iE '\<nan\>' $ddcy/$conf/NODE.001_01 || true
 		[ "$ref" ] && logdiff
 
 		continue
@@ -505,4 +546,7 @@ done
 
 [ -s jobs.txt ] && jobwait
 
-[ ! -s jobmatch.txt ] && echo "Info: no job matched the conditions"
+if [ ! -s jobmatch.txt ]
+then
+	echo "Info: no job matched the conditions"
+fi

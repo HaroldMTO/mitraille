@@ -268,7 +268,7 @@ fi
 
 echo -e "\nRename files"
 for fic in $(find -maxdepth 1 -name \*ARPE\* | \
-	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*+[0-9]{4}')
+	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*+[0-9]{4}$')
 do
 	ech=$(echo $fic | sed -re 's:.+\+0{,3}([0-9]{1,})(\.sfx)?:\1:')
 	prefix=$(echo $fic | sed -re 's:\./(.+)ARPE.+:\1:')
@@ -279,11 +279,13 @@ do
 		PF) ftype=$(echo $fic | sed -re 's:\./PFARPE(.+)\+[0-9]+.*:\1:');;
 	esac
 
+	ficarp=$(printf "ARPE.%04d.$ftype\n" $ech)
 	if [ "$ios" ] && [ $prefix = "ICMSH" -o $prefix = "PF" ]
 	then
-		lfi_move -pack -force $fic $(printf "ARPE.%04d.$ftype\n" $ech)
+		echo "lfi_move: $fic -> $ficarp"
+		lfi_move -pack -force $fic $ficarp
 	else
-		lnv $fic $(printf "ARPE.%04d.$ftype\n" $ech)
+		lnv $fic $ficarp
 	fi
 done
 

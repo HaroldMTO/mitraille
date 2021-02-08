@@ -10,10 +10,11 @@ Description:
 grid-point norms
 
 Usage:
-	normdiff.sh NODE1 NODE2 [-fp] [-h]
+	normdiff.sh NODE1 NODE2 [-nogp] [-fp] [-h]
 
 Arguments:
 	NODE1/2: path to 2 'NODE' files
+	-nogp: do not check differences for 'NODE' prints of grid-point norms
 	-fp: check differences also for 'NODE' prints of FULL-POS norms (grid-point)
 	-h: print this help and exits normally
 
@@ -29,6 +30,7 @@ Dependencies:
 
 fic1=""
 fic2=""
+gp=1
 fp=FALSE
 help=0
 
@@ -37,6 +39,9 @@ help=0
 while [ $# -ne 0 ]
 do
 	case $1 in
+		-nogp)
+			gp=0
+			;;
 		-fp)
 			fp=TRUE
 			;;
@@ -76,5 +81,8 @@ spdiff $fic1 $fic2 | grep -vE '^$' | sed -re 's:^# +:  step(s)\|:' \
 	-e 's: +$::' -e 's: {2,}([A-Z]+):\|\1:g' \
 	-e 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g'
 
-echo ". GP norms difference (up to 17):"
-R --slave -f $mitra/gpdiff.R --args fic1=$fic1 fic2=$fic2 fp=$fp
+if [ $gp -eq 1 ]
+then
+	echo ". GP norms difference (up to 17):"
+	R --slave -f $mitra/gpdiff.R --args fic1=$fic1 fic2=$fic2 fp=$fp
+fi

@@ -15,6 +15,7 @@ install:
 	make $B/mitraillette.sh
 	make $B/mitratime.sh
 	make $B/normdiff.sh
+	make $B/statdiff.sh
 	if git status >/dev/null 2>&1; then \
 		grep -q $(shell git log -1 --pretty=format:%h 2>/dev/null) $P/version || \
 			git log -1 --oneline >> $P/version; \
@@ -24,7 +25,7 @@ mitra:
 	mkdir -p $P
 	sed -re "s:mitra *=.+:mitra = \"$P\":" profils.R > $P/profils.R
 	sed -re "s:mitra *=.+:mitra = \"$P\":" gpdiff.R > $P/gpdiff.R
-	cp -pruv const config cy4[4567]* $P
+	cp -pruv statf.R const config cy4[4567]* $P
 
 $B/mitraillette.sh: mitraillette.sh
 	sed -re "s:mitra=.+:mitra=$P:" mitraillette.sh > $B/mitraillette.sh
@@ -37,3 +38,7 @@ $B/mitratime.sh: mitratime.sh
 $B/normdiff.sh: normdiff.sh
 	sed -re "s:mitra=.+:mitra=$P:" normdiff.sh > $B/normdiff.sh
 	chmod a+x $B/normdiff.sh
+
+$B/statdiff.sh: statdiff.sh
+	sed -re "s:mitra=.+:mitra=$P:" statdiff.sh > $B/statdiff.sh
+	chmod a+x $B/statdiff.sh
