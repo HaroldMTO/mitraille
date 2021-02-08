@@ -67,7 +67,7 @@ logdiff()
 	then
 		mkdir -p $ref/$conf
 		scp -qo 'Controlpath=/tmp/ssh-%r@%h:%p' $hpc:$ref/$conf/jobOK \
-			$hpc:$ref/$conf/NODE.001_01 $ref/$conf 2>/dev/null || return
+			$hpc:$ref/$conf/NODE.001_01 $ref/$conf || return
 	fi
 
 	if [ ! -e $ref/$conf/jobOK -o ! -s $ref/$conf/NODE.001_01 ]

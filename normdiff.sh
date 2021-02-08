@@ -23,7 +23,7 @@ Details:
 digits).
 
 Dependencies:
-	R software, executable ~petithommeh/bin/diff
+	R software, executable ~petithommeh/bin/spdiff
 "
 }
 
