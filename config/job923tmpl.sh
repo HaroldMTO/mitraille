@@ -1,6 +1,5 @@
 #!/bin/sh
 
-#SBATCH -p normal64
 #SBATCH -J _name
 #SBATCH -N _nnodes
 #SBATCH -n _ntaskt
