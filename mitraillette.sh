@@ -93,20 +93,22 @@ logdiff()
 
 	[ $stat -eq 0 ] && return
 
-	find $ref/$conf -name ARPE.\*.\* | grep -E '\.[0-9]{4}\.[A-Z0-9_]+$' > diff.txt || true
-	if [ ! -s diff.txt ]
-	then
+	find $ref/$conf -name ARPE.\*.\* | grep -E '\.[0-9]{4}\.[A-Z0-9_]+$' > diff.txt ||
+	{
 		echo "--> no reference diff file to compare to"
 		return 1
-	fi
+	}
 
 	while read ficref
 	do
 		fic=$ddcy/$conf/$(basename $ficref)
-		[ -s $ficref.info ] || epy_what.py $ficref -o > $ficref.info 2> epy_what.err
-		[ -s $fic.info ] || epy_what.py $fic -o > $fic.info 2> epy_what.err
+		{
+			[ -s $ficref.info ] || epy_what.py $ficref -o > $ficref.info
+			[ -s $fic.info ] || epy_what.py $fic -o > $fic.info
+		} 2> epy_what.err || cat epy_what.err 1>&2
 		diff -q $ficref.info $fic.info || true
-		DR_HOOK=0 epy_stats.py -l $fic.info -D $ficref $fic -O $fic.diff 2> epy_stats.err
+		DR_HOOK=0 epy_stats.py -l $fic.info -D $ficref $fic -O $fic.diff 2> epy_stats.err ||
+			cat epy_stats.err 1>&2
 		grep -E '^[A-Z0-9_]+ +-?[0-9]+' $fic.diff | grep -vE ' +(0\.0+E\+?0+ +){3,}' ||
 			true
 	done < diff.txt
@@ -156,7 +158,7 @@ bin0=""
 conf0=""
 time=1000
 nn=1000
-nomp=100
+nomp=400
 nj=0
 ref=""
 info=0
@@ -267,11 +269,11 @@ then
 	ls -d $packs $const $dirout
 fi
 
-pack=$(find $packs -maxdepth 1 -type d -follow -name $(basename $cycle)\*.$opt.pack | \
+pack=$(find $packs -maxdepth 1 -type d -follow -name $(basename $cycle)\* | \
 	tail -1)
 if [ -z "$pack" ]
 then
-	echo "Error: no pack named '$(basename $cycle)*.$opt.pack' on '$packs'" >&2
+	echo "Error: no pack named '$(basename $cycle)*' on '$packs'" >&2
 	exit 1
 fi
 
