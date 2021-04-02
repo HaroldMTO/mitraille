@@ -62,7 +62,7 @@ file .bashrc).
 SSH protocol for connexion. Master mode is used for optimization reasons.
 
 Dependencies:
-	utility normdiff.sh
+	utilities normdiff.sh and statdiff.sh
 "
 }
 
@@ -89,7 +89,7 @@ logdiff()
 		return
 	fi
 
-	$mitra/normdiff.sh $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01 $nogp
+	normdiff.sh $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01 $nogp
 
 	[ $stat -eq 0 ] && return
 
@@ -113,7 +113,7 @@ logdiff()
 			true
 	done < diff.txt
 
-	$mitra/statdiff.sh $ddcy/$conf
+	statdiff.sh $ddcy/$conf
 }
 
 jobwait()
