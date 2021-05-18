@@ -497,9 +497,15 @@ do
 	mkdir -p $ddcy/$conf
 
 	cp $config/IFSenv.txt $config/env.sh $ddcy/$conf
-	if [ -s $config/$bin.nml ]
+	if [ -s $cycle/$bin.nml ]
+	then
+		cp $cycle/$bin.nml $ddcy/$conf/vide.nml
+	elif [ -s $config/$bin.nml ]
 	then
 		cp $config/$bin.nml $ddcy/$conf/vide.nml
+	elif [ -s $cycle/vide.nml ]
+	then
+		cp $cycle/vide.nml $ddcy/$conf
 	else
 		cp $config/vide.nml $ddcy/$conf
 	fi
