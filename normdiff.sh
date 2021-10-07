@@ -77,6 +77,18 @@ then
 fi
 
 echo ". SP norms agreement (up to 17):"
+if grep -qE 'AVE .+[0-9][-+][0-9]' $fic1
+then
+	echo "--> correction of spectral norms printings"
+	sed -i -re 's:(AVE .+[0-9])([-+][0-9]):\1E\2:' $fic1
+fi
+
+if grep -qE 'AVE .+[0-9][-+][0-9]' $fic2
+then
+	echo "--> correction of spectral norms printings"
+	sed -i -re 's:(AVE .+[0-9])([-+][0-9]):\1E\2:' $fic2
+fi
+
 spdiff $fic1 $fic2 | grep -vE '^$' | sed -re 's:^# +:  step(s)\|:' \
 	-e 's: +$::' -e 's: {2,}([A-Z]+):\|\1:g' \
 	-e 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g'

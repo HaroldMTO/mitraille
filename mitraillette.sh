@@ -152,7 +152,7 @@ help=0
 cycle=""
 rcfile=""
 conf=""
-opt="2y"
+optd="2y"
 env="ALL"
 bin0=""
 conf0=""
@@ -188,7 +188,7 @@ do
 			shift
 			;;
 		-opt)
-			opt=$2
+			optu=$2
 			shift
 			;;
 		-noenv) env="NONE";;
@@ -269,8 +269,14 @@ then
 	ls -d $packs $const $dirout
 fi
 
-pack=$(find $packs -maxdepth 1 -type d -follow -name $(basename $cycle)\* | \
+[ -n "$optu" ] && opt=$optu || opt=$optd
+pack=$(find $packs -maxdepth 1 -type d -follow -name $(basename $cycle)\*.$opt.pack | \
 	tail -1)
+[ -z "$pack" ] &&
+	pack=$(find $packs -maxdepth 1 -type d -follow -name $(basename $cycle)\*.$opt | tail -1)
+[ -z "$pack" -a -z "$optu" ] &&
+	pack=$(find $packs -maxdepth 1 -type d -follow -name $(basename $cycle)\* | tail -1)
+
 if [ -z "$pack" ]
 then
 	echo "Error: no pack named '$(basename $cycle)*' on '$packs'" >&2
@@ -419,7 +425,7 @@ do
 	{
 		cat <<-EOF
 			export OMP_NUM_THREADS=$nthread
-			export LFITOOLS=$pack/bin/LFITOOLS
+			export LFITOOLS=$(find $pack/bin -follow -maxdepth 1 -type f | grep -i lfitools)
 			varenv=$cycle/varenv.txt
 			nam=$cycle/deltanam/$conf.nam
 			bin=$pack/bin/$bin
