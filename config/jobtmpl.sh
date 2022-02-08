@@ -21,7 +21,7 @@ then
 "
 fi
 
-lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|core|std(out|err))\."
+lstRE="\.(log|out|err)|(drhook|ifs|meminfo|linux_bind|core|std(out|err))\."
 alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --'
 alias lnv='ln -sfv'
 
@@ -59,6 +59,9 @@ then
 	echo -e "\nPossibly influencing environment variables:"
 	grep -f $varenv env.txt || echo "--> none"
 fi
+
+find -maxdepth 1 -name \*ARPE\* | \
+	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*\+[0-9]{4}(\.sfx)?$' | xargs rm -vf
 
 echo -e "\nStack limit: $(ulimit -s)"
 
@@ -121,6 +124,8 @@ cpnam $nam vide.nml fort.4
 # conf IFS
 lnv fort.4 fort.25
 
+[ "$diffnam" ] && rm -f RSPECARPE+* RFILEARPE
+
 if [ "$selnam" ]
 then
 	echo -e "\nGetting side namelist $selnam"
@@ -130,23 +135,25 @@ then
 	# restart option: only for conf with SURFEX for the moment
 	if [ "$diffnam" ]
 	then
-		mkdir -p pgdprep
+		mkdir -p pgd prep
 		# mandatory PGD specific environment: DR_HOOK_NOT_MPI
 		export DR_HOOK_NOT_MPI=1
 
-		echo -e "\nMake restart namelists for PGD from delta files:"
+		echo -e "\nMake namelists for new PGD from delta files:"
 		ls ${diffnam}_CONVPGD.nam ${diffnam}_CONVPGD.selnam_exseg1
 		xpnam --dfile="${diffnam}_CONVPGD.nam" --inplace fort.4
 		xpnam --dfile="${diffnam}_CONVPGD.selnam_exseg1" --inplace $fout
 
 		echo -e "\nLaunch MPI job for PGD file"
-		if [ ! -f pgdprep/Const.Clim.sfx ]
+		if [ ! -f pgd/Const.Clim.sfx ]
 		then
+			rm -f ICMSHARPE+0000 ICMSHARPE+0000.sfx
+			ls -l ICMSHARPEINIT ICMSHARPEINIT.sfx Const.Clim.sfx
 			mpiexe $bin > mpipgd.out 2> mpipgd.err
 			find -type f -newer $fout | grep -vE $lstRE | xargs ls -l
 
-			mv ICMSHARPE+0000.sfx pgdprep/Const.Clim.sfx
-			mv NODE.001_01 pgdprep/nodepgd
+			mv ICMSHARPE+0000.sfx pgd/Const.Clim.sfx
+			mv ICMSHARPE+0000 pgd
 		fi
 
 		echo -e "\nMake namelist for PREP from delta file:"
@@ -155,17 +162,21 @@ then
 		xpnam --dfile="${diffnam}_CONVPREP.nam" --inplace fort.4
 
 		echo -e "\nLaunch MPI job for PREP file"
-		if [ ! -f pgdprep/ICMSHARPEINIT.sfx ]
+		if [ ! -f prep/ICMSHARPE+0000.sfx -o ! -f prep/ICMSHARPE+0000 ]
 		then
+			rm -f ICMSHARPE+0000 ICMSHARPE+0000.sfx
+			ls -l ICMSHARPEINIT ICMSHARPEINIT.sfx Const.Clim.sfx
 			mpiexe $bin > mpiprep.out 2> mpiprep.err
 			find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 
-			mv ICMSHARPE+0000.sfx pgdprep/ICMSHARPEINIT.sfx
-			mv NODE.001_01 pgdprep/nodeprep
+			mv ICMSHARPE+0000 ICMSHARPE+0000.sfx prep
 		fi
 
-		echo -e "\nChange orography in PGD file (Const.Clim.sfx)"
-		cp -f pgdprep/Const.Clim.sfx .
+		echo -e "\nChange orography in new PGD file (Const.Clim.sfx)"
+		mv Const.Clim.sfx PGD.fa
+		rm -f ICMSHARPE+0000
+		cp -f prep/ICMSHARPE+0000 pgd/Const.Clim.sfx .
+		ls -l ICMSHARPE+0000 Const.Clim.sfx
 		$LFITOOLS testfa < $orog > lfi.out 2> lfi.err
 		find -type f -newer Const.Clim.sfx | grep -vE $lstRE | xargs ls -l
 
@@ -202,6 +213,7 @@ echo -e "\nLaunch MPI job"
 if [ ! -f mpiOK ]
 then
 	touch fort.4
+	ls -l ICMSHARPEINIT*
 	mpiexe $bin > mpi.out 2> mpi.err
 	find -type f -newer fort.4 | grep -vE $lstRE > mpiOK
 	cat mpiOK | xargs ls -l
@@ -272,9 +284,9 @@ echo -e "\nRename files"
 [ -n "$save" ] && mkdir -p $save
 
 for fic in $(find -maxdepth 1 -name \*ARPE\* | \
-	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*+[0-9]{4}$')
+	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*+[0-9]{4}(\.sfx)?$')
 do
-	ech=$(echo $fic | sed -re 's:.+\+0{,3}([0-9]{1,})(\.sfx)?:\1:')
+	ech=$(echo $fic | sed -re 's:.+\+0*([0-9]+)(\.sfx)?:\1:')
 	prefix=$(echo $fic | sed -re 's:\./(.+)ARPE.+:\1:')
 	case $prefix in
 		ICMSH) ftype=HIST;;
@@ -284,13 +296,13 @@ do
 	esac
 
 	ficarp=$(printf "ARPE.%04d.$ftype\n" $ech)
-	[ $prefix = "ICMSH" -a -n "$save" ] && ficarp=$save/$ficarp || true
+	[ $prefix = "PF" -a -n "$save" ] && ficarp=$save/$ficarp || true
 	if [ "$ios" ] && [ $prefix = "ICMSH" -o $prefix = "PF" ]
 	then
 		echo "lfi_move: $fic -> $ficarp"
 		lfi_move -pack -force $fic $ficarp
 	else
-		lnv $fic $ficarp
+		ln -vf $fic $ficarp
 	fi
 done
 
