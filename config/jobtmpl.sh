@@ -21,7 +21,7 @@ then
 "
 fi
 
-lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|NODE|core|std(out|err))\."
+lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|core|std(out|err))\."
 alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --'
 alias lnv='ln -sfv'
 
@@ -139,13 +139,14 @@ then
 		xpnam --dfile="${diffnam}_CONVPGD.nam" --inplace fort.4
 		xpnam --dfile="${diffnam}_CONVPGD.selnam_exseg1" --inplace $fout
 
-		echo -e "\nLaunch MPI job"
+		echo -e "\nLaunch MPI job for PGD file"
 		if [ ! -f pgdprep/Const.Clim.sfx ]
 		then
 			mpiexe $bin > mpipgd.out 2> mpipgd.err
 			find -type f -newer $fout | grep -vE $lstRE | xargs ls -l
 
 			mv ICMSHARPE+0000.sfx pgdprep/Const.Clim.sfx
+			mv NODE.001_01 pgdprep/nodepgd
 		fi
 
 		echo -e "\nMake namelist for PREP from delta file:"
@@ -153,18 +154,20 @@ then
 		cpnam $nam vide.nml fort.4
 		xpnam --dfile="${diffnam}_CONVPREP.nam" --inplace fort.4
 
-		echo -e "\nLaunch MPI job"
+		echo -e "\nLaunch MPI job for PREP file"
 		if [ ! -f pgdprep/ICMSHARPEINIT.sfx ]
 		then
 			mpiexe $bin > mpiprep.out 2> mpiprep.err
 			find -type f -newer fort.4 | grep -vE $lstRE | xargs ls -l
 
 			mv ICMSHARPE+0000.sfx pgdprep/ICMSHARPEINIT.sfx
+			mv NODE.001_01 pgdprep/nodeprep
 		fi
 
-		echo -e "\nChange orography in PGD (Const.Clim.sfx)"
-		cp -f pgdprep/* .
-		$LFITOOLS testfa < $orog
+		echo -e "\nChange orography in PGD file (Const.Clim.sfx)"
+		cp -f pgdprep/Const.Clim.sfx .
+		$LFITOOLS testfa < $orog > lfi.out 2> lfi.err
+		find -type f -newer Const.Clim.sfx | grep -vE $lstRE | xargs ls -l
 
 		# reset initial namelists
 		cpnam $nam vide.nml fort.4
@@ -266,6 +269,8 @@ then
 fi
 
 echo -e "\nRename files"
+[ -n "$save" ] && mkdir -p $save
+
 for fic in $(find -maxdepth 1 -name \*ARPE\* | \
 	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*+[0-9]{4}$')
 do
@@ -279,6 +284,7 @@ do
 	esac
 
 	ficarp=$(printf "ARPE.%04d.$ftype\n" $ech)
+	[ $prefix = "ICMSH" -a -n "$save" ] && ficarp=$save/$ficarp || true
 	if [ "$ios" ] && [ $prefix = "ICMSH" -o $prefix = "PF" ]
 	then
 		echo "lfi_move: $fic -> $ficarp"

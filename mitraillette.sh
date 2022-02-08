@@ -66,6 +66,14 @@ Dependencies:
 "
 }
 
+getbase()
+{
+	DR_HOOK=0 epy_dump.py $1 -f frame | grep 'Base date/time' | \
+		sed -re 's/ *Base .+: *([0-9]{8}) .+/\1/'
+	#epy_what.py $1 | grep 'Basis' | \
+	#	sed -re 's/ *Basis *: *([-: 0-9])/\1/' | sed -re 's/[-: ]//g'
+}
+
 logdiff()
 {
 	local fic ficref
@@ -212,6 +220,14 @@ do
 			nj=$2
 			shift
 			;;
+		-base)
+			base=$2
+			shift
+			;;
+		-res)
+			res=$(echo $2 | sed -re 's:0*([0-9]):\1:')
+			shift
+			;;
 		-ref)
 			ref=$2
 			shift
@@ -287,6 +303,26 @@ echo "IFS pack found is '$pack'"
 
 const=$(cd $const > /dev/null && pwd)
 dirout=$(cd $dirout > /dev/null && pwd)
+ana=$const/analyses
+anasfx=$const/anasurfex
+coupling=$const/coupling
+
+if [ -n "$base" -a -n "$res" ]
+then
+	if [ -z "$data" ]
+	then
+		echo "Error: mandatory arguments missing
+data: '$data'" >&2
+		exit 1
+	fi
+
+	RES=$(printf "%02d" $res)
+	ls -d $data/$RES/$base > /dev/null
+
+	ana=$data/$RES/$base
+	anasfx=$data/$RES/$base
+	coupling=$data/$RES/$base
+fi
 
 if [ -d config ]
 then
@@ -405,21 +441,41 @@ do
 			name=model;;
 	esac
 
-	echo "Setting conf $conf $nnodes $wall' $bin"
+	echo "Setting conf $conf in $name.sh $nnodes $wall' $bin"
 
-	awk -v dd=$const/analyses '$1=="'$conf'" {
+	awk -v dd=$ana '$1=="'$conf'" {
 		printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/initable > init.txt
 
 	awk -v dd=$const/pgd '$1=="'$conf'" {
 		printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/constable > const.txt
 
+	if [ -n "$base" -a -s init.txt ]
+	then
+		finit=$(sed -re 's:ln \-sfv ([^ ]+) .+:\1:' init.txt)
+		ls $finit > /dev/null
+		#MM=$(getbase $finit | cut -c5-6)
+		MM=$(echo $base | cut -c5-6)
+		if [ -z "$MM" ]
+		then
+			echo "Error: month not found in '$finit'" >&2
+			exit 1
+		elif [ $(echo $base | cut -c5-6) != $MM ]
+		then
+			echo "Error: month not found in '$finit'" >&2
+			exit 1
+		fi
+	fi
+
 	{
-		awk -v dd=$const/clim '$1=="'$conf'" {
-			printf("ln -sfv %s %s\n",gensub("^PATH",dd,"",$2),$3);}' \
-			$cycle/climtable
-		awk -v dd=$const/clim '$1=="'$conf'" {
-			printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/climfptable \
-		$cycle/filtertable
+		awk -v dd=$const/clim -v mm=".m$MM" '$1=="'$conf'" {
+			fclim = gensub("\\.mMONTH$",mm,"",gensub("^PATH",dd,"",$2));
+			printf("ln -sfv %s %s\n",fclim,$3);
+			}' $cycle/climtable
+
+		awk -v dd=$const/clim -v mm=".m$MM" '$1=="'$conf'" {
+			fclim = gensub("\\.mMONTH$",mm,"",$2);
+			printf("ln -sfv %s/%s %s\n",dd,fclim,$3);
+			}' $cycle/climfptable $cycle/filtertable
 	} > clim.txt
 
 	{
@@ -437,11 +493,17 @@ do
 		find $cycle/deltaquad/ -name $conf.\* -printf "quadnam=%p\n"
 		awk '$1=="'$conf'" {printf("pgd=%s\n",$2);}' $cycle/pgdtable
 		awk '$1=="'$conf'" {printf("pgdfa=../%s/%s\n",$2,$3);}' $cycle/pgdfatable
-		awk -v dd=$const/anasurfex '$1=="'$conf'" {
+		awk -v dd=$anasfx '$1=="'$conf'" {
 			printf("initsfx=%s/%s\n",dd,$2);}' $cycle/inisfxtable
-		awk -v dd=$const/coupling '$1=="'$conf'" {
+		awk -v dd=$coupling '$1=="'$conf'" {
 			printf("lbc=%s\n",gensub("^PATH",dd,"",$2));}' $cycle/coupltable
 		awk '$1=="'$conf'" {printf("ios=%s\n",$2);}' $cycle/ioservtable
+
+		if [ -n "$base" -a -n "$data" ]
+		then
+			awk -v dd=$data/$RES/$base '$1=="'$conf'" {printf("save=%s\n",dd);}' \
+				$cycle/savetable
+		fi
 	} > job.profile
 
 	awk -v dd=$cycle/fpnam '$1=="'$conf'" {printf("cp %s/%s %s\n",dd,$2,$3);}' \
