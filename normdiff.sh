@@ -62,7 +62,7 @@ then
 	exit
 elif [ -z "$fic1" -o -z "$fic2" ]
 then
-	echo "usage: gpdiff.sh NODE1 NODE2 [-fp] [-h]" >&2
+	echo "usage: normdiff.sh NODE1 NODE2 [-nogp] [-fp] [-h]" >&2
 	exit 1
 fi
 
@@ -76,22 +76,28 @@ then
 	exit
 fi
 
-echo ". SP norms agreement (up to 17):"
-if grep -qE 'AVE .+[0-9][-+][0-9]' $fic1
-then
-	echo "--> correction of spectral norms printings"
-	sed -i -re 's:(AVE .+[0-9])([-+][0-9]):\1E\2:' $fic1
-fi
+echo ". SP norms difference (up to 17):"
+R --slave -f $mitra/spdiff.R --args fic1=$fic1 fic2=$fic2
 
-if grep -qE 'AVE .+[0-9][-+][0-9]' $fic2
+if false
 then
-	echo "--> correction of spectral norms printings"
-	sed -i -re 's:(AVE .+[0-9])([-+][0-9]):\1E\2:' $fic2
-fi
+	echo ". SP norms agreement (up to 17):"
+	if grep -qE 'AVE .+[0-9][-+][0-9]' $fic1
+	then
+		echo "--> correction of spectral norms printings"
+		sed -i -re 's:(AVE .+[0-9])([-+][0-9]):\1E\2:' $fic1
+	fi
 
-spdiff $fic1 $fic2 | grep -vE '^$' | sed -re 's:^# +:  step(s)\|:' \
-	-e 's: +$::' -e 's: {2,}([A-Z]+):\|\1:g' \
-	-e 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g'
+	if grep -qE 'AVE .+[0-9][-+][0-9]' $fic2
+	then
+		echo "--> correction of spectral norms printings"
+		sed -i -re 's:(AVE .+[0-9])([-+][0-9]):\1E\2:' $fic2
+	fi
+
+	spdiff $fic1 $fic2 | grep -vE '^$' | sed -re 's:^# +:  step(s)\|:' \
+		-e 's: +$::' -e 's: {2,}([A-Z]+):\|\1:g' \
+		-e 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g'
+fi
 
 if [ $gp -eq 1 ]
 then
