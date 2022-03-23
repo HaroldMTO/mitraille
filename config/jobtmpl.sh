@@ -213,7 +213,7 @@ echo -e "\nLaunch MPI job"
 if [ ! -f mpiOK ]
 then
 	touch fort.4
-	ls -l ICMSHARPEINIT*
+	[ -s ICMSHARPEINIT ] && ls -l ICMSHARPEINIT*
 	mpiexe $bin > mpi.out 2> mpi.err
 	find -type f -newer fort.4 | grep -vE $lstRE > mpiOK
 	cat mpiOK | xargs ls -l
