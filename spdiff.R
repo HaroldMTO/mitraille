@@ -31,7 +31,8 @@ spnorm = function(nd,lev,ind)
 		ind = ind[inds]
 	}
 
-	spsp = as.numeric(gsub("SPECTRAL NORMS.+ ([-0-9.E+]+|NaN)$","\\1",nd[ind]))
+	spsp = gsub("SPECTRAL NORMS.+? ([-0-9.E+]+|NaN)($| +OROGRAPHY .+)","\\1",nd[ind])
+	spsp = as.numeric(spsp)
 
 	noms = strsplit(nd[ind[1]+1]," {2,}")[[1]][-1]
 	noms[noms == "KINETIC ENERGY"] = "TKE"
@@ -77,8 +78,8 @@ spnorm = function(nd,lev,ind)
 	ip = grep("LOG\\(P/P_hyd\\)|d4",noms,invert=TRUE)
 	noms[ip] = abbreviate(noms[ip])
 
-	istep = sub("NORMS AT NSTEP CNT4( \\(PREDICTOR\\))? +(\\d+)","\\2",nd[ind-1])
-	dimnames(spn) = list(istep,lev,noms)
+	#istep = sub("NORMS AT NSTEP CNT4( *\\(PREDICTOR\\))? +(\\d+)","\\2",nd[ind-1])
+	dimnames(spn) = list(NULL,lev,noms)
 
 	spn
 }
@@ -103,7 +104,9 @@ has.levels = getvar("NSPPR",nd) > 0
 nstop = getvar("NSTOP",nd)
 ts1 = getvar("TSTEP",nd)
 
+i1 = grep("START CNT4",nd)
 ind = grep("SPECTRAL NORMS",nd)
+ind = ind[ind > i1]
 ind1 = grep("NORMS AT NSTEP CNT4",nd[ind-1])
 sp1 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
@@ -119,7 +122,9 @@ has.levels = getvar("NSPPR",nd) > 0
 nstop = getvar("NSTOP",nd)
 ts2 = getvar("TSTEP",nd)
 
+i1 = grep("START CNT4",nd)
 ind = grep("SPECTRAL NORMS",nd)
+ind = ind[ind > i1]
 ind1 = grep("NORMS AT NSTEP CNT4",nd[ind-1])
 sp2 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
