@@ -121,7 +121,8 @@ names(cargs) = sapply(args,function(x) x[1])
 #lgp2 = gpnorms(cargs$fic2,as.logical(cargs$fp))
 
 gmvre = "[UVW] VELOCITY|(SURFACE )?PRESSURE|TEMPERATURE|GRAD[LM]_\\w+|GEOPOTENTIAL"
-gmvre = sprintf("%s|MOIST AIR SPECIF|ISOBARE CAPACITY|SURFACE DIV|d\\(DIV\\)\\*dP",gmvre)
+adiabre = "MOIST AIR SPECIF|ISOBARE CAPACITY|SURFACE DIV|d\\(DIV\\)\\*dP|ATND_\\w+"
+gpre = paste(gmvre,adiabre,sep="|")
 lev = 0
 
 nd = readLines(cargs$fic1)
@@ -131,7 +132,7 @@ ts1 = getvar("TSTEP",nd)
 i1 = grep("START CNT4",nd)
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
 ind = ind[ind > i1]
-indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gmvre),nd[ind],invert=TRUE)
+indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpre),nd[ind],invert=TRUE)
 if (length(indo) == 0) stop("no GP norms")
 gp1 = gpnorm(nd,lev,ind[indo])
 
@@ -147,7 +148,7 @@ ts2 = getvar("TSTEP",nd)
 i1 = grep("START CNT4",nd)
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
 ind = ind[ind > i1]
-indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gmvre),nd[ind],invert=TRUE)
+indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpre),nd[ind],invert=TRUE)
 if (length(indo) == 0) stop("no GP norms")
 gp2 = gpnorm(nd,lev,ind[indo])
 
