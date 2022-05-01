@@ -19,7 +19,7 @@ getvar = function(var,nd,sep="=")
 line2num = function(nd)
 {
 	lre = regmatches(nd,gregexpr(sprintf("(%s|\\<NaN\\>)",Gnum),nd))
-	lre = lapply(lre,function(x) gsub("(\\d+)(\\-\\d+)","\\1E\\2",x))
+	lre = lapply(lre,function(x) gsub("(\\d+)([-+]\\d+)","\\1E\\2",x))
 	sapply(lre,as.numeric)
 }
 
@@ -120,9 +120,10 @@ names(cargs) = sapply(args,function(x) x[1])
 #lgp1 = gpnorms(cargs$fic1,as.logical(cargs$fp))
 #lgp2 = gpnorms(cargs$fic2,as.logical(cargs$fp))
 
-gmvre = "[UVW] VELOCITY|(SURFACE )?PRESSURE|TEMPERATURE|GRAD[LM]_\\w+|GEOPOTENTIAL"
-adiabre = "MOIST AIR SPECIF|ISOBARE CAPACITY|SURFACE DIV|d\\(DIV\\)\\*dP|ATND_\\w+"
-gpre = paste(gmvre,adiabre,sep="|")
+gpfre1 = "[UVW] VELOCITY|(SURFACE )?PRESSURE|TEMPERATURE|GRAD[LM]_\\w+|GEOPOTENTIAL"
+gpfre2 = "MOIST AIR SPECIF|ISOBARE CAPACITY|SURFACE DIV|d\\(DIV\\)\\*dP"
+gpfre3 = "(ATND|ADIAB|CTY|SISL)_\\w+"
+gpfre = paste(gpfre1,gpfre2,gpfre3,sep="|")
 lev = 0
 
 nd = readLines(cargs$fic1)
@@ -132,7 +133,7 @@ ts1 = getvar("TSTEP",nd)
 i1 = grep("START CNT4",nd)
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
 ind = ind[ind > i1]
-indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpre),nd[ind],invert=TRUE)
+indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpfre),nd[ind],invert=TRUE)
 if (length(indo) == 0) stop("no GP norms")
 gp1 = gpnorm(nd,lev,ind[indo])
 
@@ -148,7 +149,7 @@ ts2 = getvar("TSTEP",nd)
 i1 = grep("START CNT4",nd)
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
 ind = ind[ind > i1]
-indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpre),nd[ind],invert=TRUE)
+indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpfre),nd[ind],invert=TRUE)
 if (length(indo) == 0) stop("no GP norms")
 gp2 = gpnorm(nd,lev,ind[indo])
 

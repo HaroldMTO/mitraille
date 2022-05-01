@@ -19,7 +19,7 @@ getvar = function(var,nd,sep="=")
 line2num = function(nd)
 {
 	lre = regmatches(nd,gregexpr(sprintf("(%s|\\<NaN\\>)",Gnum),nd))
-	lre = lapply(lre,function(x) gsub("(\\d+)(\\-\\d+)","\\1E\\2",x))
+	lre = lapply(lre,function(x) gsub("(\\d+)([-+]\\d+)","\\1E\\2",x))
 	sapply(lre,as.numeric)
 }
 
