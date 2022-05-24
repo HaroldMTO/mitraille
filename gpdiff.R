@@ -134,7 +134,11 @@ i1 = grep("START CNT4",nd)
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
 ind = ind[ind > i1]
 indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpfre),nd[ind],invert=TRUE)
-if (length(indo) == 0) stop("no GP norms")
+if (length(indo) == 0) {
+	cat("--> no GP norms\n")
+	q("no")
+}
+
 gp1 = gpnorm(nd,lev,ind[indo])
 
 nfrgdi = getvar(".+ NFRGDI",nd)
@@ -150,7 +154,11 @@ i1 = grep("START CNT4",nd)
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
 ind = ind[ind > i1]
 indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpfre),nd[ind],invert=TRUE)
-if (length(indo) == 0) stop("no GP norms")
+if (length(indo) == 0) {
+	cat("--> no GP norms\n")
+	q("no")
+}
+
 gp2 = gpnorm(nd,lev,ind[indo])
 
 nfrgdi = getvar(".+ NFRGDI",nd)
