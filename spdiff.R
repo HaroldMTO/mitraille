@@ -31,7 +31,8 @@ spnorm = function(nd,lev,ind)
 		ind = ind[inds]
 	}
 
-	spsp = gsub("SPECTRAL NORMS.+? ([-0-9.E+]+|NaN)($| +OROGRAPHY .+)","\\1",nd[ind])
+	spsp = gsub("SPECTRAL NORMS.*? LOG\\(PREHYDS\\) +([-0-9.E+]+|NaN)($| +OROGRAPHY .+)",
+		"\\1",nd[ind])
 	spsp = as.numeric(spsp)
 
 	noms = strsplit(nd[ind[1]+1]," {2,}")[[1]][-1]
