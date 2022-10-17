@@ -13,7 +13,7 @@ Description:
 Usage:
 	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-opt opt] [-noenv] \
 [-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] [-info] \
-[-prof] [-force] [-i] [-f] [-nogp] [-nostat] [-h]
+[-base YYYYMMDD -res HH] [-prof] [-force] [-i] [-f] [-nogp] [-nostat] [-h]
 
 Arguments:
 	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to \
@@ -32,6 +32,9 @@ environment is set from shell's startup, as login shell (-> .profile).
 	-hpc: let job conf completion and comparison (ifever asked for) being \
 looked for on HPC named MACHINE as an alternative to job local directory
 	-info: only print info on jobs that have succeeded and failed
+	-base/-res: run jobs on the specified base date and hour. If so, variable data \
+must exist (set in rcfile or in env) and point to a initial files as a path following \
+pattern [HH]/[YYYYMMDD]/[initfile].
 	-prof: only print info on jobs profiles
 	-force: keep on submitting jobs even if any previously submitted job failed
 	-f: rerun jobs even when already completed
@@ -76,32 +79,32 @@ getbase()
 
 logdiff()
 {
-	local fic ficref
+	local fic ficref rrconf=$ref/$conf/$bb
 
-	if [ "$hpc" ] && [ ! -e $ref/$conf/jobOK -o ! -s $ref/$conf/NODE.001_01 ]
+	if [ "$hpc" ] && [ ! -e $rrconf/jobOK -o ! -s $rrconf/NODE.001_01 ]
 	then
-		mkdir -p $ref/$conf
-		scp -qo 'Controlpath=/tmp/ssh-%r@%h:%p' $hpc:$ref/$conf/jobOK \
-			$hpc:$ref/$conf/NODE.001_01 $ref/$conf || return
+		mkdir -p $rrconf
+		scp -qo 'Controlpath=/tmp/ssh-%r@%h:%p' $hpc:$rrconf/jobOK \
+			$hpc:$rrconf/NODE.001_01 $rrconf || return
 	fi
 
-	if [ ! -e $ref/$conf/jobOK -o ! -s $ref/$conf/NODE.001_01 ]
+	if [ ! -e $rrconf/jobOK -o ! -s $rrconf/NODE.001_01 ]
 	then
-		echo "--> no ref log (jobOK + NODE.001_01) for conf $conf"
+		echo "--> no ref log (jobOK + NODE.001_01) on '$rrconf'"
 		return
 	fi
 
-	if ! grep -qi 'spectral norms' $ref/$conf/NODE.001_01
+	if ! grep -qi 'spectral norms' $rrconf/NODE.001_01
 	then
 		echo "--> no spectral norms"
 		return
 	fi
 
-	normdiff.sh $ref/$conf/NODE.001_01 $ddcy/$conf/NODE.001_01 $nogp
+	normdiff.sh $rrconf/NODE.001_01 $ddconf/NODE.001_01 $nogp
 
 	[ $stat -eq 0 ] && return
 
-	find $ref/$conf -name ARPE.\*.\* | grep -E '\.[0-9]{4}\.[A-Z0-9_]+$' > diff.txt ||
+	find $rrconf -name ARPE.\*.\* | grep -E '\.[0-9]{4}\.[A-Z0-9_]+$' > diff.txt ||
 	{
 		echo "--> no reference diff file to compare to"
 		return 1
@@ -109,7 +112,7 @@ logdiff()
 
 	while read ficref
 	do
-		fic=$ddcy/$conf/$(basename $ficref)
+		fic=$ddconf/$(basename $ficref)
 		{
 			[ -s $ficref.info ] || epy_what.py $ficref -o > $ficref.info
 			[ -s $fic.info ] || epy_what.py $fic -o > $fic.info
@@ -121,12 +124,12 @@ logdiff()
 			true
 	done < diff.txt
 
-	statdiff.sh $ddcy/$conf
+	statdiff.sh $ddconf
 }
 
 jobwait()
 {
-	local jobid conf
+	local jobid conf ddconf
 	local stats="CONFIGURING|COMPLETING|PENDING|RUNNING|RESIZING|SUSPENDED"
 
 	sleep 2
@@ -148,7 +151,8 @@ jobwait()
 
 		sacct -nPXj $jobid -o state | grep -vi COMPLETED && continue
 
-		[ -s $ddcy/$conf/NODE.001_01 ] && grep -iE '\<nan\>' $ddcy/$conf/NODE.001_01 || true
+		ddconf=$ddcy/$conf/$bb
+		[ -s $ddconf/NODE.001_01 ] && grep -iE '\<nan\>' $ddconf/NODE.001_01 || true
 
 		[ -z "$ref" ] && continue
 
@@ -306,6 +310,7 @@ dirout=$(cd $dirout > /dev/null && pwd)
 ana=$const/analyses
 anasfx=$const/anasurfex
 coupling=$const/coupling
+bb=""
 
 if [ -n "$base" -a -n "$res" ]
 then
@@ -319,9 +324,10 @@ data: '$data'" >&2
 	RES=$(printf "%02d" $res)
 	ls -d $data/$RES/$base > /dev/null
 
-	ana=$data/$RES/$base
-	anasfx=$data/$RES/$base
-	coupling=$data/$RES/$base
+	bb=$RES/$base
+	ana=$data/$bb
+	anasfx=$data/$bb
+	coupling=$data/$bb
 fi
 
 if [ -d config ]
@@ -375,12 +381,12 @@ cd $tmpdir
 
 if [ $info -eq 1 ]
 then
-	find $ddcy -name jobOK -printf "%h\n" | sed -re "s:$dirout/::" | sort > jok
+	find $ddcy -maxdepth 2 -name jobOK -printf "%h\n" | sed -re "s:$dirout/::" | sort > jok
 	echo "Jobs completed:"
 	cat jok
 	echo "Jobs failed:"
-	find $ddcy -name mpi\*.out -printf "%h\n" | sed -re "s:$dirout/::" | sort | \
-		grep -vf jok
+	find $ddcy -maxdepth 2 -name mpi\*.out -printf "%h\n" | sed -re "s:$dirout/::" | \
+		sort | grep -vf jok
 	exit
 fi
 
@@ -398,23 +404,26 @@ do
 		continue
 	fi
 
-	if [ ! -e $ddcy/$conf/jobOK ] && [ "$hpc" ]
+	ddconf=$ddcy/$conf
+	[ -n "$bb" ] && ddconf=$ddconf/$bb
+
+	if [ ! -e $ddconf/jobOK ] && [ "$hpc" ]
 	then
-		mkdir -p $ddcy/$conf
-		scp -qo 'Controlpath=/tmp/ssh-%r@%h:%p' $hpc:$ddcy/$conf/jobOK \
-			$hpc:$ddcy/$conf/NODE.001_01 $ddcy/$conf 2>/dev/null || true
+		mkdir -p $ddconf
+		scp -qo 'Controlpath=/tmp/ssh-%r@%h:%p' $hpc:$ddconf/jobOK \
+			$hpc:$ddconf/NODE.001_01 $ddconf 2>/dev/null || true
 	fi
 
-	if [ -e $ddcy/$conf/jobOK -a $rerun -eq 1 ]
+	if [ -e $ddconf/jobOK -a $rerun -eq 1 ]
 	then
 		echo "--> job $conf already completed, rerun asked"
-		rm $ddcy/$conf/*OK
+		rm $ddconf/*OK
 	fi
 
-	if [ -e $ddcy/$conf/jobOK ]
+	if [ -e $ddconf/jobOK ]
 	then
 		echo "--> job $conf already completed"
-		[ -s $ddcy/$conf/NODE.001_01 ] && grep -iE '\<nan\>' $ddcy/$conf/NODE.001_01 || true
+		[ -s $ddconf/NODE.001_01 ] && grep -iE '\<nan\>' $ddconf/NODE.001_01 || true
 		[ "$ref" ] && logdiff
 
 		continue
@@ -562,30 +571,30 @@ do
 	ntask=$((ntaskt-ntaskio))
 	ntpn=$((ntaskt/nnodes))
 
-	mkdir -p $ddcy/$conf
+	mkdir -p $ddconf
 
-	cp $config/IFSenv.txt $config/env.sh $ddcy/$conf
+	cp $config/IFSenv.txt $config/env.sh $ddconf
 	if [ -s $cycle/$bin.nml ]
 	then
-		cp $cycle/$bin.nml $ddcy/$conf/vide.nml
+		cp $cycle/$bin.nml $ddconf/vide.nml
 	elif [ -s $config/$bin.nml ]
 	then
-		cp $config/$bin.nml $ddcy/$conf/vide.nml
+		cp $config/$bin.nml $ddconf/vide.nml
 	elif [ -s $cycle/vide.nml ]
 	then
-		cp $cycle/vide.nml $ddcy/$conf
+		cp $cycle/vide.nml $ddconf
 	else
-		cp $config/vide.nml $ddcy/$conf
+		cp $config/vide.nml $ddconf
 	fi
 
-	sed -e "/TAG FUNC/r $config/cpnam.sh" $tmpl > $ddcy/$conf/$name.sh
+	sed -e "/TAG FUNC/r $config/cpnam.sh" $tmpl > $ddconf/$name.sh
 	sed -i -e "s:_name:$name:g" -e "s:_ntaskt:$ntaskt:g" \
 		-e "s:_ntasks:$ntask:g" -e "s:_ntaskio:$ntaskio:g" \
 		-e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
 		-e "s:_nthreads:$nthread:g" -e "s:_maxmem:$mem:g" -e "s:_wall:$wall:g" \
 		-e "s:_varexp:$env:" -e "/TAG PROFILE/r job.profile" \
 		-e "/TAG CONST/r const.txt" -e "/TAG CLIM/r clim.txt" \
-		-e "/TAG FPOS/r fpos.txt" -e "/TAG INIT/r init.txt" $ddcy/$conf/$name.sh
+		-e "/TAG FPOS/r fpos.txt" -e "/TAG INIT/r init.txt" $ddconf/$name.sh
 
 	[ $nj -eq 0 ] && continue
 
@@ -598,12 +607,12 @@ do
 		fi
 
 		echo "--> interactive job submission for conf $conf"
-		chmod u+x $ddcy/$conf/$name.sh
-		(cd $ddcy/$conf; $name.sh)
+		chmod u+x $ddconf/$name.sh
+		(cd $ddconf; $name.sh)
 		continue
 	fi
 
-	jobid=$(cd $ddcy/$conf; sbatch $name.sh)
+	jobid=$(cd $ddconf; sbatch $name.sh)
 	jobid=$(echo $jobid | tail -1 | awk '{print $NF}')
 	echo "--> job submitted for conf $conf - jobid: $jobid"
 	if [ -z "$jobid" ] || ! echo $jobid | grep -qE '^[0-9]+$'
