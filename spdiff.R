@@ -105,16 +105,17 @@ has.levels = getvar("NSPPR",nd) > 0
 nstop = getvar("NSTOP",nd)
 ts1 = getvar("TSTEP",nd)
 
+# can be several in TL/AD tests
 i1 = grep("START CNT4",nd)
 ind = grep("SPECTRAL NORMS",nd)
-ind = ind[ind > i1]
+ind = ind[ind > i1[1]]
 ind1 = grep("NORMS AT NSTEP CNT4",nd[ind-1])
 sp1 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep1 = seq(0,nstop,by=nfrsdi)
 
-nt = dim(sp1)[1]
-if (length(istep1) > nt) length(istep1) = nt
+nt1 = dim(sp1)[1]
+if (length(istep1) > nt1) length(istep1) = nt1
 
 nd = readLines(cargs$fic2)
 nd = grep("^ *$",nd,value=TRUE,invert=TRUE)
@@ -123,16 +124,15 @@ has.levels = getvar("NSPPR",nd) > 0
 nstop = getvar("NSTOP",nd)
 ts2 = getvar("TSTEP",nd)
 
+if (ts2 != ts1) stop("incompatible TSTEP values")
+
 i1 = grep("START CNT4",nd)
 ind = grep("SPECTRAL NORMS",nd)
-ind = ind[ind > i1]
+ind = ind[ind > i1[1]]
 ind1 = grep("NORMS AT NSTEP CNT4",nd[ind-1])
 sp2 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep2 = seq(0,nstop,by=nfrsdi)
-
-nt = dim(sp2)[1]
-if (length(istep2) > nt) length(istep2) = nt
 
 noms1 = dimnames(sp1)[[3]]
 noms2 = dimnames(sp2)[[3]]
@@ -156,13 +156,28 @@ if (length(it) == 0) {
 	stop("no steps in common to compare\n")
 }
 
+nt = dim(sp2)[1]
+if (length(istep2) > nt) {
+	length(istep2) = nt
+} else if (nt > length(istep2)) {
+	cat("--> several runs in file (may be TL/AD tests)\n")
+	ntest1 = nt1%/%length(istep1)
+	ntest2 = nt%/%length(istep2)
+	stopifnot(nt1 == 3*length(istep1)-1)
+	stopifnot(nt == 3*length(istep2)-1)
+
+	indt = indt+rep(0:2*length(indt),each=length(indt))
+	length(indt) = length(indt)-1
+	it = which(! is.na(indt))
+}
+
 sp1 = sp1[na.omit(indt),,na.omit(indv),drop=FALSE]
 sp2 = sp2[it,,iv,drop=FALSE]
 ndiff = sapply(1:dim(sp1)[3],function(i) diffnorm(sp1[,1,i],sp2[,1,i]))
 ndiff = matrix(round(ndiff),ncol=dim(sp1)[3])
 cat(" step",sprintf("%5s",noms1[na.omit(indv)]),"\n")
 nt = dim(sp1)[1]
-if (all(ndiff == 0)) {
+if (all(! is.na(ndiff)) && all(ndiff == 0)) {
 	for (i in seq(min(5,nt))) cat(format(i-1,width=5),sprintf("%5g",ndiff[i,]),"\n")
 	if (nt > 5) cat("...",nt-min(5,nt),"more 0 lines\n")
 } else {
