@@ -2,14 +2,6 @@ Gndigits = round(log10(.Machine$double.eps))
 Gnum = "-?\\d*\\.\\d+([eE]?[-+]?\\d+)?\\>"
 Gint = "-?\\d+\\>"
 
-getarg = function(x,args)
-{
-	ind = grep(sprintf("\\<%s=",x),args)
-	if (length(ind) == 0) return(NULL)
-
-	strsplit(sub(sprintf("\\<%s=",x),"",args[ind]),split=":")[[1]]
-}
-
 getvar = function(var,nd,sep="=")
 {
 	re = sprintf("^ *\\<%s *%s *(%s|%s).*",var,sep,Gint,Gnum)
@@ -42,6 +34,8 @@ gpnorm = function(nd,lev,ind)
 	noms[noms == "TEMPRATURE"] = "TEMP"
 	noms[noms == "U VELOCITY"] = "U VELOC."
 	noms[noms == "V VELOCITY"] = "V VELOC."
+	noms = sub("ADIAB_","ADIA_",noms)
+	noms = sub("GRAD([LM])","GR\\1",noms)
 
 	nt = length(gpn)/(3*length(lev)*length(noms))
 	stopifnot(nt == as.integer(nt))
@@ -105,6 +99,16 @@ fpgpnorms = function(flines)
 	lgp
 }
 
+countfield = function(ind,ind2,nl2)
+{
+	which(diff(ind[seq(ind2[1],ind2[2])]) > nl2)[1]
+}
+
+indexpand = function(ind,nf,nl)
+{
+	rep(ind,each=nf)+(seq(nf)-1)*nl2
+}
+
 diffnorm = function(x,y)
 {
 	x0 = pmax(abs(x),abs(y))
@@ -128,18 +132,32 @@ lev = 0
 
 nd = readLines(cargs$fic1)
 nd = grep("^ *$",nd,value=TRUE,invert=TRUE)
+nflevg = getvar("NFLEVG",nd)
+has.levels = getvar("NSPPR",nd) > 0
+nl2 = 2+has.levels*nflevg
 nstop = getvar("NSTOP",nd)
 ts1 = getvar("TSTEP",nd)
 i1 = grep("START CNT4",nd)
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
 ind = ind[ind > i1]
+
+# check presence of norms for GFL t0
 indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpfre),nd[ind],invert=TRUE)
 if (length(indo) == 0) {
 	cat("--> no GP norms\n")
 	q("no")
 }
 
-gp1 = gpnorm(nd,lev,ind[indo])
+if (cargs$gpre == "gpnorm gflt0") {
+	gp1 = gpnorm(nd,lev,ind[indo])
+} else {
+	ind1 = grep(cargs$gpre,nd[ind-1],ignore.case=TRUE)
+	if (length(ind1) == 0) stop(paste("no GP norms for pattern",cargs$gpre))
+	nf = countfield(ind,ind1,nl2)
+	indi = indexpand(ind[ind1],nf,nl2)
+	gp1 = gpnorm(nd,lev,indi)
+}
+
 
 nfrgdi = getvar(".+ NFRGDI",nd)
 istep1 = seq(0,nstop,by=nfrgdi)
@@ -153,13 +171,22 @@ ts2 = getvar("TSTEP",nd)
 i1 = grep("START CNT4",nd)
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
 ind = ind[ind > i1]
+
 indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpfre),nd[ind],invert=TRUE)
 if (length(indo) == 0) {
 	cat("--> no GP norms\n")
 	q("no")
 }
 
-gp2 = gpnorm(nd,lev,ind[indo])
+if (cargs$gpre == "gpnorm gflt0") {
+	gp2 = gpnorm(nd,lev,ind[indo])
+} else {
+	ind1 = grep(cargs$gpre,nd[ind-1],ignore.case=TRUE)
+	if (length(ind1) == 0) stop(paste("no GP norms for pattern",cargs$gpre))
+	nf = countfield(ind,ind1,nl2)
+	indi = indexpand(ind[ind1],nf,nl2)
+	gp2 = gpnorm(nd,lev,indi)
+}
 
 nfrgdi = getvar(".+ NFRGDI",nd)
 istep2 = seq(0,nstop,by=nfrgdi)
@@ -195,10 +222,18 @@ gp2 = gp2[it,,,iv,drop=FALSE]
 ndiff = sapply(1:dim(gp1)[4],function(i) diffnorm(gp1[,1,1,i],gp2[,1,1,i]))
 ndiff = matrix(round(ndiff),ncol=dim(gp1)[4])
 
-cat(" step",sprintf("%5s",abbreviate(noms1[na.omit(indv)])),"\n")
+noms = abbreviate(noms1[na.omit(indv)])
+if (max(nchar(noms)) > 5) {
+	fmt = "%6g"
+	cat(" step",sprintf("%6s",noms),"\n")
+} else {
+	fmt = "%5g"
+	cat(" step",sprintf("%5s",noms),"\n")
+}
+
 nt = dim(gp1)[1]
 if (all(ndiff == 0)) {
-	for (i in seq(min(5,nt))) cat(format(i-1,width=5),sprintf("%5g",ndiff[i,]),"\n")
+	for (i in seq(min(5,nt))) cat(format(i-1,width=5),sprintf(fmt,ndiff[i,]),"\n")
 	if (nt > 5) cat("...",nt-min(5,nt),"more 0 lines\n")
 } else {
 	if (nt > 30) {
@@ -207,5 +242,5 @@ if (all(ndiff == 0)) {
 		ind = seq(nt)
 	}
 
-	for (i in ind) cat(format(i-1,width=5),sprintf("%5g",ndiff[i,]),"\n")
+	for (i in ind) cat(format(i-1,width=5),sprintf(fmt,ndiff[i,]),"\n")
 }

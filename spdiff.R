@@ -2,14 +2,6 @@ Gndigits = round(log10(.Machine$double.eps))
 Gnum = "-?\\d*\\.\\d+([eE]?[-+]?\\d+)?\\>"
 Gint = "-?\\d+\\>"
 
-getarg = function(x,args)
-{
-	ind = grep(sprintf("\\<%s=",x),args)
-	if (length(ind) == 0) return(NULL)
-
-	strsplit(sub(sprintf("\\<%s=",x),"",args[ind]),split=":")[[1]]
-}
-
 getvar = function(var,nd,sep="=")
 {
 	re = sprintf("^ *\\<%s *%s *(%s|%s).*",var,sep,Gint,Gnum)
@@ -108,8 +100,13 @@ ts1 = getvar("TSTEP",nd)
 # can be several in TL/AD tests
 i1 = grep("START CNT4",nd)
 ind = grep("SPECTRAL NORMS",nd)
+if (length(i1) == 0) {
+	cat("--> no forecast conf (cnt4)\n")
+	quit("no")
+}
+
 ind = ind[ind > i1[1]]
-ind1 = grep("NORMS AT NSTEP CNT4",nd[ind-1])
+ind1 = grep(cargs$spre,nd[ind-1])
 sp1 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep1 = seq(0,nstop,by=nfrsdi)
@@ -129,7 +126,7 @@ if (ts2 != ts1) stop("incompatible TSTEP values")
 i1 = grep("START CNT4",nd)
 ind = grep("SPECTRAL NORMS",nd)
 ind = ind[ind > i1[1]]
-ind1 = grep("NORMS AT NSTEP CNT4",nd[ind-1])
+ind1 = grep(cargs$spre,nd[ind-1])
 sp2 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep2 = seq(0,nstop,by=nfrsdi)
@@ -156,18 +153,24 @@ if (length(it) == 0) {
 	stop("no steps in common to compare\n")
 }
 
-nt = dim(sp2)[1]
-if (length(istep2) > nt) {
-	length(istep2) = nt
-} else if (nt > length(istep2)) {
-	cat("--> several runs in file (may be TL/AD tests)\n")
-	ntest1 = nt1%/%length(istep1)
-	ntest2 = nt%/%length(istep2)
-	stopifnot(nt1 == 3*length(istep1)-1)
-	stopifnot(nt == 3*length(istep2)-1)
+nt2 = dim(sp2)[1]
+if (length(istep2) > nt2) {
+	length(istep2) = nt2
+} else if (nt2 > length(istep2)) {
+	ntest = nt1%/%length(istep1)
+	indt = indt+rep((1:ntest-1)*length(indt),each=length(indt))
+	if (nt1 == ntest*length(istep1)-1) {
+		cat("--> several runs in file, seems like an AD test\n")
+		stopifnot(nt2 == ntest*length(istep2)-1)
+		length(indt) = length(indt)-1
+	} else if (nt1%%length(istep1) == 0) {
+		cat("--> several runs in file, seems like a TL test\n")
+		stopifnot(nt2%%length(istep2) == 0)
+		stopifnot(ntest == nt2%/%length(istep2))
+	} else {
+		stop("several runs in file but unrecognized pattern")
+	}
 
-	indt = indt+rep(0:2*length(indt),each=length(indt))
-	length(indt) = length(indt)-1
 	it = which(! is.na(indt))
 }
 
