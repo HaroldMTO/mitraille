@@ -15,7 +15,7 @@ line2num = function(nd)
 	sapply(lre,as.numeric)
 }
 
-gpnorm = function(nd,lev,ind)
+gpnorm = function(nd,lev,ind,noms)
 {
 	if (missing(ind)) {
 		ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
@@ -25,11 +25,17 @@ gpnorm = function(nd,lev,ind)
 
 	if (length(ind) == 0) stop("no GP norms")
 
+	if (missing(noms)) {
+		noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind]))
+	} else {
+		i = grep(sprintf(" *GPNORM +(%s)\\>",paste(noms,collapse="|")),nd[ind])
+		ind = ind[i]
+	}
+
 	indi = rep(ind,each=length(lev))+lev+1
 
 	gpn = line2num(nd[indi])
 
-	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind]))
 	noms[noms == "SURFACE PRESSURE"] = "SURF P"
 	noms[noms == "TEMPRATURE"] = "TEMP"
 	noms[noms == "U VELOCITY"] = "U VELOC."
@@ -149,7 +155,12 @@ if (length(indo) == 0) {
 }
 
 if (cargs$gpre == "gpnorm gflt0") {
-	gp1 = gpnorm(nd,lev,ind[indo])
+	# looking for the 1st group of norm print
+	ind = ind[indo]
+	i1 = grep("^ *gpnorm +\\w",nd)
+	if (length(i1) == 0) i1 = length(nd)
+	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind[ind < i1[1]]]))
+	gp1 = gpnorm(nd,lev,ind,noms)
 } else {
 	ind1 = grep(cargs$gpre,nd[ind-1],ignore.case=TRUE)
 	if (length(ind1) == 0) stop(paste("no GP norms for pattern",cargs$gpre))
@@ -157,7 +168,6 @@ if (cargs$gpre == "gpnorm gflt0") {
 	indi = indexpand(ind[ind1],nf,nl2)
 	gp1 = gpnorm(nd,lev,indi)
 }
-
 
 nfrgdi = getvar(".+ NFRGDI",nd)
 istep1 = seq(0,nstop,by=nfrgdi)
@@ -172,6 +182,8 @@ i1 = grep("START CNT4",nd)
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
 ind = ind[ind > i1]
 
+if (ts1 != ts2) stop("different TSTEP")
+
 indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpfre),nd[ind],invert=TRUE)
 if (length(indo) == 0) {
 	cat("--> no GP norms\n")
@@ -179,7 +191,12 @@ if (length(indo) == 0) {
 }
 
 if (cargs$gpre == "gpnorm gflt0") {
-	gp2 = gpnorm(nd,lev,ind[indo])
+	# looking for the 1st group of norm print
+	ind = ind[indo]
+	i1 = grep("^ *gpnorm +\\w",nd)
+	if (length(i1) == 0) i1 = length(nd)
+	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind[ind < i1[1]]]))
+	gp2 = gpnorm(nd,lev,ind,noms)
 } else {
 	ind1 = grep(cargs$gpre,nd[ind-1],ignore.case=TRUE)
 	if (length(ind1) == 0) stop(paste("no GP norms for pattern",cargs$gpre))
@@ -192,8 +209,6 @@ nfrgdi = getvar(".+ NFRGDI",nd)
 istep2 = seq(0,nstop,by=nfrgdi)
 nt = dim(gp2)[1]
 if (length(istep2) > nt) length(istep2) = nt
-
-if (ts1 != ts2) stop("different TSTEP")
 
 noms1 = dimnames(gp1)[[4]]
 noms2 = dimnames(gp2)[[4]]
