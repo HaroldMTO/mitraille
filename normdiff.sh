@@ -85,7 +85,7 @@ then
 	exit
 elif [ -z "$fic1" -o -z "$fic2" ]
 then
-	echo "usage: normdiff.sh NODE1 NODE2 [-spre RE] [-nogp] [-fp] [-h]" >&2
+	echo "usage: normdiff.sh NODE1 NODE2 [-spre RE|-nosp] [-gpre RE|-nogp] [-fp] [-h]" >&2
 	exit 1
 fi
 
