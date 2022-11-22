@@ -143,14 +143,19 @@ has.levels = getvar("NSPPR",nd) > 0
 nl2 = 2+has.levels*nflevg
 nstop = getvar("NSTOP",nd)
 ts1 = getvar("TSTEP",nd)
-i1 = grep("START CNT4",nd)
+icnt4 = grep("START CNT4",nd)
+if (length(icnt4) == 0) {
+	cat("--> no forecast conf (cnt4) in 1st file\n")
+	quit("no")
+}
+
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
-ind = ind[ind > i1]
+ind = ind[ind > icnt4[1]]
 
 # check presence of norms for GFL t0
 indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpfre),nd[ind],invert=TRUE)
 if (length(indo) == 0) {
-	cat("--> no GP norms\n")
+	cat("--> no GP norms in 1st file\n")
 	q("no")
 }
 
@@ -158,8 +163,10 @@ if (cargs$gpre == "gpnorm gflt0") {
 	# looking for the 1st group of norm print
 	ind = ind[indo]
 	i1 = grep("^ *gpnorm +\\w",nd)
-	if (length(i1) == 0) i1 = length(nd)
-	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind[ind < i1[1]]]))
+	if (length(i1) > 0) i1 = i1[i1 > icnt4[1]]
+	if (length(i1) > 0) ind = ind[ind < i1[1]]
+
+	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind]))
 	gp1 = gpnorm(nd,lev,ind,noms)
 } else {
 	ind1 = grep(cargs$gpre,nd[ind-1],ignore.case=TRUE)
@@ -178,15 +185,20 @@ nd = readLines(cargs$fic2)
 nd = grep("^ *$",nd,value=TRUE,invert=TRUE)
 nstop = getvar("NSTOP",nd)
 ts2 = getvar("TSTEP",nd)
-i1 = grep("START CNT4",nd)
+icnt4 = grep("START CNT4",nd)
+if (length(icnt4) == 0) {
+	cat("--> no forecast conf (cnt4) in 1st file\n")
+	quit("no")
+}
+
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
-ind = ind[ind > i1]
+ind = ind[ind > icnt4[1]]
 
 if (ts1 != ts2) stop("different TSTEP")
 
 indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpfre),nd[ind],invert=TRUE)
 if (length(indo) == 0) {
-	cat("--> no GP norms\n")
+	cat("--> no GP norms in 2nd file\n")
 	q("no")
 }
 
@@ -194,8 +206,10 @@ if (cargs$gpre == "gpnorm gflt0") {
 	# looking for the 1st group of norm print
 	ind = ind[indo]
 	i1 = grep("^ *gpnorm +\\w",nd)
-	if (length(i1) == 0) i1 = length(nd)
-	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind[ind < i1[1]]]))
+	if (length(i1) > 0) i1 = i1[i1 > icnt4[1]]
+	if (length(i1) > 0) ind = ind[ind < i1[1]]
+
+	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind]))
 	gp2 = gpnorm(nd,lev,ind,noms)
 } else {
 	ind1 = grep(cargs$gpre,nd[ind-1],ignore.case=TRUE)
@@ -214,7 +228,7 @@ noms1 = dimnames(gp1)[[4]]
 noms2 = dimnames(gp2)[[4]]
 
 indv = match(noms1,noms2)
-if (any(is.na(indv))) cat("missing variables :",noms1[is.na(indv)],"\n")
+if (any(is.na(indv))) cat("missing variables in 2nd file :",noms1[is.na(indv)],"\n")
 
 indv = match(noms2,noms1)
 iv = which(noms2 %in% noms1)

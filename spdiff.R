@@ -98,14 +98,14 @@ nstop = getvar("NSTOP",nd)
 ts1 = getvar("TSTEP",nd)
 
 # can be several in TL/AD tests
-i1 = grep("START CNT4",nd)
-ind = grep("SPECTRAL NORMS",nd)
-if (length(i1) == 0) {
-	cat("--> no forecast conf (cnt4)\n")
+icnt4 = grep("START CNT4",nd)
+if (length(icnt4) == 0) {
+	cat("--> no forecast conf (cnt4) in 1st file\n")
 	quit("no")
 }
 
-ind = ind[ind > i1[1]]
+ind = grep("SPECTRAL NORMS",nd)
+ind = ind[ind > icnt4[1]]
 ind1 = grep(cargs$spre,nd[ind-1])
 sp1 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
@@ -123,9 +123,14 @@ ts2 = getvar("TSTEP",nd)
 
 if (ts2 != ts1) stop("incompatible TSTEP values")
 
-i1 = grep("START CNT4",nd)
+icnt4 = grep("START CNT4",nd)
+if (length(icnt4) == 0) {
+	cat("--> no forecast conf (cnt4) in 2nd file\n")
+	quit("no")
+}
+
 ind = grep("SPECTRAL NORMS",nd)
-ind = ind[ind > i1[1]]
+ind = ind[ind > icnt4[1]]
 ind1 = grep(cargs$spre,nd[ind-1])
 sp2 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
