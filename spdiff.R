@@ -158,27 +158,36 @@ if (length(it) == 0) {
 	stop("no steps in common to compare\n")
 }
 
+st = indt-1
 nt2 = dim(sp2)[1]
 if (length(istep2) > nt2) {
 	length(istep2) = nt2
 } else if (nt2 > length(istep2)) {
-	ntest = nt1%/%length(istep1)
-	indt = indt+rep((1:ntest-1)*length(indt),each=length(indt))
-	if (nt1 == ntest*length(istep1)-1) {
-		cat("--> several runs in file, seems like an AD test\n")
-		stopifnot(nt2 == ntest*length(istep2)-1)
-		length(indt) = length(indt)-1
-	} else if (nt1%%length(istep1) == 0) {
+	ntest = (nt1+1)%/%length(istep1)
+
+	if (nt1%%length(istep1) == 0) {
 		cat("--> several runs in file, seems like a TL test\n")
+		ntest = nt1%/%length(istep1)
 		stopifnot(nt2%%length(istep2) == 0)
 		stopifnot(ntest == nt2%/%length(istep2))
+		prefix = "TL"
+	} else if ((nt1+1)%%length(istep1) == 0) {
+		cat("--> several runs in file, seems like an AD test\n")
+		ntest = (nt1+1)%/%length(istep1)
+		stopifnot(any(nt2+1 == ntest*length(istep2)))
+		prefix = "AD"
 	} else {
+		cat("steps:",istep1,"\ndim(sp1):",nt1,"\n")
 		stop("several runs in file but unrecognized pattern")
 	}
 
+	st = paste(rep(paste(prefix,1:ntest-1,sep=""),each=length(indt)),indt-1,sep="_")
+	indt = indt+rep((1:ntest-1)*length(indt),each=length(indt))
+	if (length(indt) > dim(sp1)[1]) length(indt) = length(indt)-1
 	it = which(! is.na(indt))
 }
 
+st = na.omit(st)
 sp1 = sp1[na.omit(indt),,na.omit(indv),drop=FALSE]
 sp2 = sp2[it,,iv,drop=FALSE]
 ndiff = sapply(1:dim(sp1)[3],function(i) diffnorm(sp1[,1,i],sp2[,1,i]))
@@ -186,7 +195,7 @@ ndiff = matrix(round(ndiff),ncol=dim(sp1)[3])
 cat(" step",sprintf("%5s",noms1[na.omit(indv)]),"\n")
 nt = dim(sp1)[1]
 if (all(! is.na(ndiff)) && all(ndiff == 0)) {
-	for (i in seq(min(5,nt))) cat(format(i-1,width=5),sprintf("%5g",ndiff[i,]),"\n")
+	for (i in seq(min(5,nt))) cat(format(st[i],width=5),sprintf("%5g",ndiff[i,]),"\n")
 	if (nt > 5) cat("...",nt-min(5,nt),"more 0 lines\n")
 } else {
 	if (nt > 30) {
@@ -195,5 +204,5 @@ if (all(! is.na(ndiff)) && all(ndiff == 0)) {
 		ind = seq(nt)
 	}
 
-	for (i in ind) cat(format(i-1,width=5),sprintf("%5g",ndiff[i,]),"\n")
+	for (i in ind) cat(format(st[i],width=5),sprintf("%5g",ndiff[i,]),"\n")
 }
