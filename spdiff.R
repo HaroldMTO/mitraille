@@ -136,7 +136,7 @@ ind1 = grep(cargs$spre,nd[ind-1])
 sp2 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep2 = seq(0,nstop,by=nfrsdi)
-cat("nb of steps, file 1:",nstop,"- norms frequency:",nfrsdi,"\n")
+cat("nb of steps, file 2:",nstop,"- norms frequency:",nfrsdi,"\n")
 
 noms1 = dimnames(sp1)[[3]]
 noms2 = dimnames(sp2)[[3]]
