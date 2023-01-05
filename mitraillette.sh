@@ -488,9 +488,28 @@ do
 	} > clim.txt
 
 	{
+		if [ -x $pack/bin/lfitools ]
+		then
+			lfitools=$pack/bin/lfitools
+		elif [ -x $pack/bin/LFITOOLS ]
+		then
+			lfitools=$pack/bin/LFITOOLS
+		elif [ -d ~gco/packs ]
+		then
+			lfitools=$(find ~gco/packs -follow -mindepth 3 -maxdepth 3 -type f \
+				-name lfitools -o -name LFITOOLS | grep -E '_(main|op1)\..+\.2y\.pack' | \
+				sort -r | head -1)
+		fi
+
+		if [ "$lfitools" ]
+		then
+			echo "export LFITOOLS=$lfitools"
+		else
+			echo "Warning: no binary LFITOOLS" >&2
+		fi
+
 		cat <<-EOF
 			export OMP_NUM_THREADS=$nthread
-			export LFITOOLS=$(find $pack/bin -follow -maxdepth 1 -type f | grep -i lfitools)
 			varenv=$cycle/varenv.txt
 			nam=$cycle/deltanam/$conf.nam
 			bin=$pack/bin/$bin
