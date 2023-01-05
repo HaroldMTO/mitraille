@@ -110,6 +110,7 @@ ind1 = grep(cargs$spre,nd[ind-1])
 sp1 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep1 = seq(0,nstop,by=nfrsdi)
+cat("nb of steps, file 1:",nstop,"- norms frequency:",nfrsdi,"\n")
 
 nt1 = dim(sp1)[1]
 if (length(istep1) > nt1) length(istep1) = nt1
@@ -135,6 +136,7 @@ ind1 = grep(cargs$spre,nd[ind-1])
 sp2 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep2 = seq(0,nstop,by=nfrsdi)
+cat("nb of steps, file 1:",nstop,"- norms frequency:",nfrsdi,"\n")
 
 noms1 = dimnames(sp1)[[3]]
 noms2 = dimnames(sp2)[[3]]
@@ -151,6 +153,9 @@ if (length(iv) == 0) {
 	stop("no variables in common to compare\n")
 }
 
+nt2 = dim(sp2)[1]
+if (length(istep2) > nt2)  length(istep2) = nt2
+
 indt = match(istep2,istep1)
 it = which(istep2 %in% istep1)
 if (length(it) == 0) {
@@ -159,10 +164,7 @@ if (length(it) == 0) {
 }
 
 st = indt-1
-nt2 = dim(sp2)[1]
-if (length(istep2) > nt2) {
-	length(istep2) = nt2
-} else if (nt2 > length(istep2)) {
+if (nt2 > length(istep2)) {
 	ntest = (nt1+1)%/%length(istep1)
 
 	if (nt1%%length(istep1) == 0) {
