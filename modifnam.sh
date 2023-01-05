@@ -186,6 +186,18 @@ then
 		grep -ivE '\<LVFE_(REGETA|CENTRI|[XZ]_TERM|LAPL(_HALF|_[TB]BC|2PI)|DELNHPRE)' \
 			$ficold > $tmp/fic
 		sed -re 's:(NVFE_(DER|INT)BC|LVFE_(APPROX|LAPL *=)):\!\1:' $tmp/fic > $tmp/fic.2
+
+		if grep -qE '\<CVFE_ETAH\>' $ficold
+		then
+			if [ $(grep -E '\<CVFE_ETAH\>' $ficold | wc -l | awk '{print $0}') -gt 1 ]
+			then
+				echo "multi CVFE_ETAH: $ficold"
+			fi
+
+			mv $tmp/fic.2 $ficnew
+			continue
+		fi
+
 		grep -qE '\<LVFE_REGETA.+TRUE' $ficold &&
 			sed -re 's:\<(LVERTFE.+TRUE.+):\1\n   CVFE_ETAH="REGETA",:' $tmp/fic.2 > $ficnew ||
 			sed -re 's:\<(LVERTFE.+TRUE.+):\1\n   CVFE_ETAH="CHORDAL",:' $tmp/fic.2 > $ficnew
