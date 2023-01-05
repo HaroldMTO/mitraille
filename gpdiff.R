@@ -164,7 +164,15 @@ if (cargs$gpre == "gpnorm gflt0") {
 	ind = ind[indo]
 	i1 = grep("^ *gpnorm +\\w",nd)
 	if (length(i1) > 0) i1 = i1[i1 > icnt4[1]]
-	if (length(i1) > 0) ind = ind[ind < i1[1]]
+	if (length(i1) > 0) {
+		# account for stepx (calling gp_model)
+		if (all(ind > i1[1])) {
+			ii = which(nd[i1] == nd[i1[1]])
+			ind = ind[ind < i1[ii[2]]]
+		} else {
+			ind = ind[ind < i1[1]]
+		}
+	}
 
 	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind]))
 	gp1 = gpnorm(nd,lev,ind,noms)
