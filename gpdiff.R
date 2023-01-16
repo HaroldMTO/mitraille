@@ -37,11 +37,10 @@ gpnorm = function(nd,lev,ind,noms)
 	gpn = line2num(nd[indi])
 
 	noms[noms == "SURFACE PRESSURE"] = "SURF P"
-	noms[noms == "TEMPRATURE"] = "TEMP"
 	noms[noms == "U VELOCITY"] = "U VELOC."
 	noms[noms == "V VELOCITY"] = "V VELOC."
+	noms = sub("TEMPERATURE","TEMP",noms)
 	noms = sub("ADIAB_","ADIA_",noms)
-	noms = sub("GRAD([LM])","GR\\1",noms)
 
 	nt = length(gpn)/(3*length(lev)*length(noms))
 	stopifnot(nt == as.integer(nt))
@@ -259,8 +258,13 @@ gp2 = gp2[it,,,iv,drop=FALSE]
 ndiff = sapply(1:dim(gp1)[4],function(i) diffnorm(gp1[,1,1,i],gp2[,1,1,i]))
 ndiff = matrix(round(ndiff),ncol=dim(gp1)[4])
 
-noms = abbreviate(noms1[na.omit(indv)])
-if (max(nchar(noms)) > 5) {
+noms = noms1[na.omit(indv)]
+if (max(nchar(noms))*length(noms) > 65) noms = abbreviate(noms,5)
+if (max(nchar(noms))*length(noms) > 65) noms = abbreviate(noms)
+if (max(nchar(noms)) > 7) {
+	fmt = "%8g"
+	cat(" step",sprintf("%8s",noms),"\n")
+} else if (max(nchar(noms)) > 5) {
 	fmt = "%6g"
 	cat(" step",sprintf("%6s",noms),"\n")
 } else {
