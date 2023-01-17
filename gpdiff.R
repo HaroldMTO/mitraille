@@ -131,7 +131,7 @@ names(cargs) = sapply(args,function(x) x[1])
 
 gpfre1 = "[UVW] VELOCITY|(SURFACE )?PRESSURE|TEMPERATURE|GRAD[LM]_\\w+|GEOPOTENTIAL"
 gpfre2 = "MOIST AIR SPECIF|ISOBARE CAPACITY|SURFACE DIV|d\\(DIV\\)\\*dP"
-gpfre3 = "(ATND|ADIAB|CTY|SISL)_\\w+"
+gpfre3 = "(ATND|ADIAB|CTY|SISL)_\\w+|C9|DP9|\\w*SP1"
 gpfre = paste(gpfre1,gpfre2,gpfre3,sep="|")
 lev = 0
 
@@ -185,8 +185,9 @@ if (cargs$gpre == "gpnorm gflt0") {
 
 nfrgdi = getvar(".+ NFRGDI",nd)
 istep1 = seq(0,nstop,by=nfrgdi)
-nt = dim(gp1)[1]
-if (length(istep1) > nt) length(istep1) = nt
+nt1 = dim(gp1)[1]
+cat("nb of steps, file 1:",nstop,"- norms frequency:",nfrgdi,"- nb of norms:",nt1,"\n")
+if (length(istep1) > nt1) length(istep1) = nt1
 
 nd = readLines(cargs$fic2)
 nd = grep("^ *$",nd,value=TRUE,invert=TRUE)
@@ -214,7 +215,15 @@ if (cargs$gpre == "gpnorm gflt0") {
 	ind = ind[indo]
 	i1 = grep("^ *gpnorm +\\w",nd)
 	if (length(i1) > 0) i1 = i1[i1 > icnt4[1]]
-	if (length(i1) > 0) ind = ind[ind < i1[1]]
+	if (length(i1) > 0) {
+		# account for stepx (calling gp_model)
+		if (all(ind > i1[1])) {
+			ii = which(nd[i1] == nd[i1[1]])
+			ind = ind[ind < i1[ii[2]]]
+		} else {
+			ind = ind[ind < i1[1]]
+		}
+	}
 
 	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind]))
 	gp2 = gpnorm(nd,lev,ind,noms)
@@ -228,8 +237,12 @@ if (cargs$gpre == "gpnorm gflt0") {
 
 nfrgdi = getvar(".+ NFRGDI",nd)
 istep2 = seq(0,nstop,by=nfrgdi)
-nt = dim(gp2)[1]
-if (length(istep2) > nt) length(istep2) = nt
+nt2 = dim(gp2)[1]
+cat("nb of steps, file 2:",nstop,"- norms frequency:",nfrgdi,"- nb of norms:",nt2,"\n")
+if (length(istep2) > nt2) {
+	cat("--> limiting norms to",nt2,"1st ones\n")
+	length(istep2) = nt2
+}
 
 noms1 = dimnames(gp1)[[4]]
 noms2 = dimnames(gp2)[[4]]
@@ -253,6 +266,33 @@ if (length(it) == 0) {
 	stop("no steps in common to compare\n")
 }
 
+st = indt-1
+if (nt2 > length(istep2)) {
+	ntest = (nt1+1)%/%length(istep1)
+
+	if (nt1%%length(istep1) == 0) {
+		cat("--> several runs in file, seems like a TL test\n")
+		ntest = nt1%/%length(istep1)
+		stopifnot(nt2%%length(istep2) == 0)
+		stopifnot(ntest == nt2%/%length(istep2))
+		prefix = "TL"
+	} else if ((nt1+1)%%length(istep1) == 0) {
+		cat("--> several runs in file, seems like an AD test\n")
+		ntest = (nt1+1)%/%length(istep1)
+		stopifnot(any(nt2+1 == ntest*length(istep2)))
+		prefix = "AD"
+	} else {
+		cat("steps:",istep1,"\ndim(sp1):",nt1,"\n")
+		stop("several runs in file but unrecognized pattern")
+	}
+
+	st = paste(rep(paste(prefix,1:ntest-1,sep=""),each=length(indt)),indt-1,sep="_")
+	indt = indt+rep((1:ntest-1)*length(indt),each=length(indt))
+	if (length(indt) > dim(gp1)[1]) length(indt) = length(indt)-1
+	it = which(! is.na(indt))
+}
+
+st = na.omit(st)
 gp1 = gp1[na.omit(indt),,,na.omit(indv),drop=FALSE]
 gp2 = gp2[it,,,iv,drop=FALSE]
 ndiff = sapply(1:dim(gp1)[4],function(i) diffnorm(gp1[,1,1,i],gp2[,1,1,i]))
@@ -274,7 +314,7 @@ if (max(nchar(noms)) > 7) {
 
 nt = dim(gp1)[1]
 if (all(ndiff == 0)) {
-	for (i in seq(min(5,nt))) cat(format(i-1,width=5),sprintf(fmt,ndiff[i,]),"\n")
+	for (i in seq(min(5,nt))) cat(format(st[i],width=5),sprintf(fmt,ndiff[i,]),"\n")
 	if (nt > 5) cat("...",nt-min(5,nt),"more 0 lines\n")
 } else {
 	if (nt > 30) {
@@ -283,5 +323,5 @@ if (all(ndiff == 0)) {
 		ind = seq(nt)
 	}
 
-	for (i in ind) cat(format(i-1,width=5),sprintf(fmt,ndiff[i,]),"\n")
+	for (i in ind) cat(format(st[i],width=5),sprintf(fmt,ndiff[i,]),"\n")
 }

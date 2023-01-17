@@ -110,9 +110,8 @@ ind1 = grep(cargs$spre,nd[ind-1])
 sp1 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep1 = seq(0,nstop,by=nfrsdi)
-cat("nb of steps, file 1:",nstop,"- norms frequency:",nfrsdi,"\n")
-
 nt1 = dim(sp1)[1]
+cat("nb of steps, file 1:",nstop,"- norms frequency:",nfrsdi,"- nb of norms:",nt1,"\n")
 if (length(istep1) > nt1) length(istep1) = nt1
 
 nd = readLines(cargs$fic2)
@@ -136,7 +135,9 @@ ind1 = grep(cargs$spre,nd[ind-1])
 sp2 = spnorm(nd,lev,ind[ind1])
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep2 = seq(0,nstop,by=nfrsdi)
-cat("nb of steps, file 2:",nstop,"- norms frequency:",nfrsdi,"\n")
+nt2 = dim(sp2)[1]
+cat("nb of steps, file 2:",nstop,"- norms frequency:",nfrsdi,"- nb of norms:",nt2,"\n")
+if (length(istep2) > nt2)  length(istep2) = nt2
 
 noms1 = dimnames(sp1)[[3]]
 noms2 = dimnames(sp2)[[3]]
@@ -152,9 +153,6 @@ if (length(iv) == 0) {
 	cat("variables (2):",noms2,"\n")
 	stop("no variables in common to compare\n")
 }
-
-nt2 = dim(sp2)[1]
-if (length(istep2) > nt2)  length(istep2) = nt2
 
 indt = match(istep2,istep1)
 it = which(istep2 %in% istep1)
@@ -194,7 +192,21 @@ sp1 = sp1[na.omit(indt),,na.omit(indv),drop=FALSE]
 sp2 = sp2[it,,iv,drop=FALSE]
 ndiff = sapply(1:dim(sp1)[3],function(i) diffnorm(sp1[,1,i],sp2[,1,i]))
 ndiff = matrix(round(ndiff),ncol=dim(sp1)[3])
-cat(" step",sprintf("%5s",noms1[na.omit(indv)]),"\n")
+
+noms = noms1[na.omit(indv)]
+if (max(nchar(noms))*length(noms) > 65) noms = abbreviate(noms,5)
+if (max(nchar(noms))*length(noms) > 65) noms = abbreviate(noms)
+if (max(nchar(noms)) > 7) {
+	fmt = "%8g"
+	cat(" step",sprintf("%8s",noms),"\n")
+} else if (max(nchar(noms)) > 5) {
+	fmt = "%6g"
+	cat(" step",sprintf("%6s",noms),"\n")
+} else {
+	fmt = "%5g"
+	cat(" step",sprintf("%5s",noms),"\n")
+}
+
 nt = dim(sp1)[1]
 if (all(! is.na(ndiff)) && all(ndiff == 0)) {
 	for (i in seq(min(5,nt))) cat(format(st[i],width=5),sprintf("%5g",ndiff[i,]),"\n")
