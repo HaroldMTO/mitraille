@@ -14,6 +14,7 @@
 if [ "$SLURM_JOB_NAME" ]
 then
 	printf "SLURM job card:
+	Partition: $SLURM_JOB_PARTITION
 	Number of nodes: $SLURM_JOB_NUM_NODES
 	Number of tasks: $SLURM_NTASKS
 	Tasks per node: $((SLURM_NTASKS/SLURM_JOB_NUM_NODES))
