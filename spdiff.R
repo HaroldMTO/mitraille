@@ -58,8 +58,9 @@ spnorm = function(nd,lev,ind)
 		spnh = line2num(nd[indi])
 
 		nomsnh = strsplit(nd[indn]," {2,}")[[1]][-1]
-		nomsnh[nomsnh == "LOG(PRE/PREHYD)"] = "LOG(P/P_hyd)"
-		nomsnh[nomsnh == "d4 = VERT DIV + X"] = "d4 (= vdiv+X)"
+		nomsnh[nomsnh == "LOG(PRE/PREHYD)"] = "LN(P/Phyd)"
+		nomsnh[regexpr("d4 *= *VERT +DIV *\\+ *X",nomsnh) > 0] = "d4 (= vdiv+X)"
+		nomsnh[regexpr("d5 *= *VERT +DIV *\\+ *XS",nomsnh) > 0] = "d5 (= vdiv+XS)"
 
 		dim(spnh) = c(length(nomsnh),length(lev),nt)
 		spnh = aperm(spnh,c(3,2,1))
@@ -68,7 +69,7 @@ spnorm = function(nd,lev,ind)
 		dim(spn) = c(nt,length(lev),length(noms))
 	}
 
-	ip = grep("LOG\\(P/P_hyd\\)|d4",noms,invert=TRUE)
+	ip = grep("LN\\(P/Phyd\\)|d[45] \\(= vdiv",noms,invert=TRUE)
 	noms[ip] = abbreviate(noms[ip])
 
 	#istep = sub("NORMS AT NSTEP CNT4( *\\(PREDICTOR\\))? +(\\d+)","\\2",nd[ind-1])
@@ -194,22 +195,22 @@ ndiff = sapply(1:dim(sp1)[3],function(i) diffnorm(sp1[,1,i],sp2[,1,i]))
 ndiff = matrix(round(ndiff),ncol=dim(sp1)[3])
 
 noms = noms1[na.omit(indv)]
-if (max(nchar(noms))*length(noms) > 65) noms = abbreviate(noms,5)
-if (max(nchar(noms))*length(noms) > 65) noms = abbreviate(noms)
-if (max(nchar(noms)) > 7) {
-	fmt = "%8g"
-	cat(" step",sprintf("%8s",noms),"\n")
-} else if (max(nchar(noms)) > 5) {
+if (max(nchar(noms))*length(noms) > 80) noms = abbreviate(noms,6)
+if (max(nchar(noms))*length(noms) > 80) noms = abbreviate(noms,5)
+if (max(nchar(noms)) > 9) {
+	fmt = "%9g"
+	cat(" step",sprintf("%9s",noms),"\n")
+} else if (max(nchar(noms)) > 7) {
+	fmt = "%7g"
+	cat(" step",sprintf("%7s",noms),"\n")
+} else {
 	fmt = "%6g"
 	cat(" step",sprintf("%6s",noms),"\n")
-} else {
-	fmt = "%5g"
-	cat(" step",sprintf("%5s",noms),"\n")
 }
 
 nt = dim(sp1)[1]
 if (all(! is.na(ndiff)) && all(ndiff == 0)) {
-	for (i in seq(min(5,nt))) cat(format(st[i],width=5),sprintf("%5g",ndiff[i,]),"\n")
+	for (i in seq(min(5,nt))) cat(format(st[i],width=5),sprintf(fmt,ndiff[i,]),"\n")
 	if (nt > 5) cat("...",nt-min(5,nt),"more 0 lines\n")
 } else {
 	if (nt > 30) {
@@ -218,5 +219,5 @@ if (all(! is.na(ndiff)) && all(ndiff == 0)) {
 		ind = seq(nt)
 	}
 
-	for (i in ind) cat(format(st[i],width=5),sprintf("%5g",ndiff[i,]),"\n")
+	for (i in ind) cat(format(st[i],width=5),sprintf(fmt,ndiff[i,]),"\n")
 }
