@@ -40,10 +40,14 @@ gpnorm = function(nd,lev,ind,noms)
 	noms[noms == "U VELOCITY"] = "U VELOC."
 	noms[noms == "V VELOCITY"] = "V VELOC."
 	noms = sub("TEMPERATURE","TEMP",noms)
-	noms = sub("ADIAB_","ADIA_",noms)
 
 	nt = length(gpn)/(3*length(lev)*length(noms))
-	stopifnot(nt == as.integer(nt))
+	if (nt != as.integer(nt)) {
+		cat("noms:",noms,"\n")
+		cat("lev:",lev,"\n")
+		cat("gpn:",dim(gpn),"\n")
+		stop("gpn, noms, lev inconsistent")
+	}
 
 	dim(gpn) = c(3,length(lev),length(noms),nt)
 	gpl = aperm(gpn,c(4,2,1,3))
@@ -131,7 +135,7 @@ names(cargs) = sapply(args,function(x) x[1])
 
 gpfre1 = "[UVW] VELOCITY|(SURFACE )?PRESSURE|TEMPERATURE|GRAD[LM]_\\w+|GEOPOTENTIAL"
 gpfre2 = "MOIST AIR SPECIF|ISOBARE CAPACITY|SURFACE DIV|d\\(DIV\\)\\*dP"
-gpfre3 = "(ATND|ADIAB|CTY|SISL)_\\w+|C9|DP9|\\w*SP1"
+gpfre3 = "(ATND|ADIAB|CTY|(SI)?SL)_(\\w+)"
 gpfre = paste(gpfre1,gpfre2,gpfre3,sep="|")
 lev = 0
 
@@ -158,7 +162,17 @@ if (length(indo) == 0) {
 	q("no")
 }
 
-if (cargs$gpre == "gpnorm gflt0") {
+ind1 = grep(cargs$gpre,nd[ind-1],ignore.case=TRUE)
+if (length(ind1) == 0 && cargs$gpre == "gpnorm gflt0") {
+	# looking for GFL norms printed in cnt4 after spectral norms
+	ind1 = grep("NORMS AT (NSTEP|END) CNT4",nd[ind-2-nl2],ignore.case=TRUE)
+	if (length(ind1) == 0) {
+		ind1 = grep("NORMS AT (NSTEP|END) CNT4",nd[ind-3-nl2],ignore.case=TRUE)
+	}
+}
+
+if (length(ind1) == 0) {
+	cat("--> no print for pattern",cargs$gpre,"in file 1, searching for norms by names found:\n")
 	# looking for the 1st group of norm print
 	ind = ind[indo]
 	i1 = grep("^ *gpnorm +\\w",nd)
@@ -174,9 +188,9 @@ if (cargs$gpre == "gpnorm gflt0") {
 	}
 
 	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind]))
+	cat("",noms,"\n")
 	gp1 = gpnorm(nd,lev,ind,noms)
 } else {
-	ind1 = grep(cargs$gpre,nd[ind-1],ignore.case=TRUE)
 	if (length(ind1) == 0) stop(paste("no GP norms for pattern",cargs$gpre))
 	nf = countfield(ind,ind1,nl2)
 	indi = indexpand(ind[ind1],nf,nl2)
@@ -186,8 +200,16 @@ if (cargs$gpre == "gpnorm gflt0") {
 nfrgdi = getvar(".+ NFRGDI",nd)
 istep1 = seq(0,nstop,by=nfrgdi)
 nt1 = dim(gp1)[1]
+ii = grep("NORMS AT (NSTEP|END) CNT4",nd)
+st1 = gsub("^ *NORMS AT (NSTEP|END) CNT4(\\w*) +","\\2",nd[ii])
+if (any(regexpr("(TL|AD)",st1) > 0)) st1 = gsub("^(\\d+)","NL\\1",st1)
 cat("nb of steps, file 1:",nstop,"- norms frequency:",nfrgdi,"- nb of norms:",nt1,"\n")
-if (length(istep1) > nt1) length(istep1) = nt1
+if (length(istep1) > nt1) {
+	# norms for corrector of PC scheme not managed (let a chance for 1st norms)
+	if (nt1 > 1) stopifnot(all(regexpr("CORRECTOR",nd[ii]) < 0))
+	length(istep1) = nt1
+}
+stopifnot(nt1 <= length(st1))
 
 nd = readLines(cargs$fic2)
 nd = grep("^ *$",nd,value=TRUE,invert=TRUE)
@@ -211,6 +233,14 @@ if (length(indo) == 0) {
 }
 
 if (cargs$gpre == "gpnorm gflt0") {
+	# looking for GFL norms printed in cnt4 after spectral norms
+	ind1 = grep("NORMS AT (NSTEP|END) CNT4",nd[ind-2-nl2],ignore.case=TRUE)
+} else {
+	ind1 = grep(cargs$gpre,nd[ind-1],ignore.case=TRUE)
+}
+
+if (length(ind1) == 0) {
+	cat("--> no print for pattern",cargs$gpre,"in file 2, searching for norms by names found:\n")
 	# looking for the 1st group of norm print
 	ind = ind[indo]
 	i1 = grep("^ *gpnorm +\\w",nd)
@@ -226,9 +256,9 @@ if (cargs$gpre == "gpnorm gflt0") {
 	}
 
 	noms = unique(sub(" *GPNORM +(\\w+.+?) +AVERAGE.+","\\1",nd[ind]))
+	cat("",noms,"\n")
 	gp2 = gpnorm(nd,lev,ind,noms)
 } else {
-	ind1 = grep(cargs$gpre,nd[ind-1],ignore.case=TRUE)
 	if (length(ind1) == 0) stop(paste("no GP norms for pattern",cargs$gpre))
 	nf = countfield(ind,ind1,nl2)
 	indi = indexpand(ind[ind1],nf,nl2)
@@ -238,11 +268,16 @@ if (cargs$gpre == "gpnorm gflt0") {
 nfrgdi = getvar(".+ NFRGDI",nd)
 istep2 = seq(0,nstop,by=nfrgdi)
 nt2 = dim(gp2)[1]
+ii = grep("NORMS AT (NSTEP|END) CNT4",nd)
+st2 = gsub("^ *NORMS AT (NSTEP|END) CNT4(\\w*) +","\\2",nd[ii])
+if (any(regexpr("(TL|AD)",st2) > 0)) st2 = gsub("^(\\d+)","NL\\1",st2)
 cat("nb of steps, file 2:",nstop,"- norms frequency:",nfrgdi,"- nb of norms:",nt2,"\n")
 if (length(istep2) > nt2) {
-	cat("--> limiting norms to",nt2,"1st ones\n")
+	# norms for corrector of PC scheme not managed (let a chance for 1st norms)
+	if (nt2 > 1) stopifnot(all(regexpr("CORRECTOR",nd[ii]) < 0))
 	length(istep2) = nt2
 }
+stopifnot(nt2 <= length(st2))
 
 noms1 = dimnames(gp1)[[4]]
 noms2 = dimnames(gp2)[[4]]
@@ -266,55 +301,73 @@ if (length(it) == 0) {
 	stop("no steps in common to compare\n")
 }
 
-st = indt-1
-if (nt2 > length(istep2)) {
+if (nt1 != nt2) {
+	# TL and TL/AD tests are not managed (too much complicated)
+	stopifnot(nt1 <= length(istep1))
+	stopifnot(nt2 <= length(istep2))
+	nt = min(nt1,nt2)
+	cat("--> different number of steps in files, limiting norms to",nt,"1st ones\n")
+}
+
+if (nt1 > length(istep1)) {
 	ntest = (nt1+1)%/%length(istep1)
 
 	if (nt1%%length(istep1) == 0) {
-		cat("--> several runs in file, seems like a TL test\n")
+		cat("--> several runs in file, seems like a TL/AD test\n")
 		ntest = nt1%/%length(istep1)
 		stopifnot(nt2%%length(istep2) == 0)
 		stopifnot(ntest == nt2%/%length(istep2))
-		prefix = "TL"
 	} else if ((nt1+1)%%length(istep1) == 0) {
+		# 1 step is missing up to steps: last AD one
 		cat("--> several runs in file, seems like an AD test\n")
 		ntest = (nt1+1)%/%length(istep1)
 		stopifnot(any(nt2+1 == ntest*length(istep2)))
-		prefix = "AD"
+	} else if ((nt1-1)%%(length(istep1)-1) == 0) {
+		# there is just one more than steps (without 0): NL0
+		cat("steps:",istep1,"- dim(gp1):",nt1,"\n")
+		ntest = (nt1-1)%/%(length(istep1)-1)
+		stopifnot(nt2 == nt1)
 	} else {
-		cat("steps:",istep1,"\ndim(sp1):",nt1,"\n")
+		cat("ntest:",ntest,"- steps:",nt1,"/",length(istep1),"\n")
 		stop("several runs in file but unrecognized pattern")
 	}
 
-	st = paste(rep(paste(prefix,1:ntest-1,sep=""),each=length(indt)),indt-1,sep="_")
-	indt = indt+rep((1:ntest-1)*length(indt),each=length(indt))
-	if (length(indt) > dim(gp1)[1]) length(indt) = length(indt)-1
-	it = which(! is.na(indt))
+	indt = seq(along=st1)
+	if (length(indt) > nt1) length(indt) = nt1
 }
 
-st = na.omit(st)
+it = which(! is.na(indt))
 gp1 = gp1[na.omit(indt),,,na.omit(indv),drop=FALSE]
 gp2 = gp2[it,,,iv,drop=FALSE]
-ndiff = sapply(1:dim(gp1)[4],function(i) diffnorm(gp1[,1,1,i],gp2[,1,1,i]))
-ndiff = matrix(round(ndiff),ncol=dim(gp1)[4])
+st1 = st1[na.omit(indt)]
+#ndiff = sapply(1:dim(gp1)[4],function(i) diffnorm(gp1[,1,1,i],gp2[,1,1,i]))
+#ndiff = matrix(round(ndiff),ncol=dim(gp1)[4])
+ndiff = array(round(diffnorm(gp1,gp2)),dim=dim(gp1))
 
-noms = noms1[na.omit(indv)]
+mnx = "mnx" %in% names(cargs) && as.logical(cargs$mnx)
+
+noms = gsub(gpfre3,"\\3",noms1[na.omit(indv)])
 if (max(nchar(noms))*length(noms) > 65) noms = abbreviate(noms,5)
-if (max(nchar(noms))*length(noms) > 65) noms = abbreviate(noms)
-if (max(nchar(noms)) > 7) {
-	fmt = "%8g"
-	cat(" step",sprintf("%8s",noms),"\n")
+if (max(nchar(noms)) > 7 || mnx) {
+	fmt = "%8s"
 } else if (max(nchar(noms)) > 5) {
-	fmt = "%6g"
-	cat(" step",sprintf("%6s",noms),"\n")
+	fmt = "%6s"
 } else {
-	fmt = "%5g"
-	cat(" step",sprintf("%5s",noms),"\n")
+	fmt = "%5s"
 }
 
+cat(" step",sprintf(fmt,noms),"\n")
 nt = dim(gp1)[1]
 if (all(ndiff == 0)) {
-	for (i in seq(min(5,nt))) cat(format(st[i],width=5),sprintf(fmt,ndiff[i,]),"\n")
+	if (mnx) {
+		for (i in seq(min(5,nt))) {
+			sdiff = apply(ndiff,4,function(x) paste(sprintf("%g",x[i,1,]),collapse="/"))
+			cat(format(st1[i],width=5),sprintf(fmt,sdiff),"\n")
+		}
+	} else {
+		for (i in seq(min(5,nt))) cat(format(st1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
+	}
+
 	if (nt > 5) cat("...",nt-min(5,nt),"more 0 lines\n")
 } else {
 	if (nt > 30) {
@@ -323,5 +376,51 @@ if (all(ndiff == 0)) {
 		ind = seq(nt)
 	}
 
-	for (i in ind) cat(format(st[i],width=5),sprintf(fmt,ndiff[i,]),"\n")
+	if (mnx) {
+		for (i in ind) {
+			sdiff = apply(ndiff,4,function(x) paste(sprintf("%g",x[i,1,]),collapse="/"))
+			cat(format(st1[i],width=5),sprintf(fmt,sdiff),"\n")
+		}
+	} else {
+		for (i in ind) cat(format(st1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
+	}
 }
+
+if (nt1 > length(istep1) && regexpr("gpnorm g(mv|fl)t0 traj",cargs$gpre) > 0) {
+	gpnl = gp1[regexpr("NL",st1) > 0,,,,drop=FALSE]
+	gptl = gp1[regexpr("TL",st1) > 0,,,,drop=FALSE]
+	gpad = gp1[rev(regexpr("AD",st1) > 0),,,,drop=FALSE]
+
+	cat("+ NL/TL comparison:\n")
+	ndiff = array(round(diffnorm(gpnl,gptl)),dim=dim(gpnl))
+	cat(" step",sprintf(fmt,noms),"\n")
+	nt = dim(gpnl)[1]
+	if (all(ndiff == 0)) {
+		for (i in seq(min(5,nt))) cat(format(st1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
+	} else {
+		if (nt > 30) {
+			ind = seq(1,nt,by=nt%/%30)
+		} else {
+			ind = seq(nt)
+		}
+
+		for (i in ind) cat(format(st1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
+	}
+
+	cat("+ NL/AD comparison:\n")
+	ndiff = array(round(diffnorm(gpnl,gptl)),dim=dim(gpnl))
+	cat(" step",sprintf(fmt,noms),"\n")
+	nt = dim(gpnl)[1]
+	if (all(ndiff == 0)) {
+		for (i in seq(min(5,nt))) cat(format(st1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
+	} else {
+		if (nt > 30) {
+			ind = seq(1,nt,by=nt%/%30)
+		} else {
+			ind = seq(nt)
+		}
+
+		for (i in ind) cat(format(st1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
+	}
+}
+

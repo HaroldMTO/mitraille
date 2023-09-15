@@ -19,7 +19,7 @@ spnorm = function(nd,lev,ind)
 {
 	if (missing(ind)) {
 		ind = grep("SPECTRAL NORMS",nd)
-		inds = grep("NORMS AT NSTEP CNT4",nd[ind-1])
+		inds = grep("NORMS AT (NSTEP|END) CNT4",nd[ind-1])
 		ind = ind[inds]
 	}
 
@@ -161,27 +161,27 @@ if (length(it) == 0) {
 	stop("no steps in common to compare\n")
 }
 
+ii = grep("NORMS AT (NSTEP|END) CNT4",nd)
+stn = gsub("^ *NORMS AT (NSTEP|END) CNT4(\\w*) +","\\2",nd[ii])
 st = indt-1
 if (nt2 > length(istep2)) {
 	ntest = (nt1+1)%/%length(istep1)
 
 	if (nt1%%length(istep1) == 0) {
-		cat("--> several runs in file, seems like a TL test\n")
+		cat("--> several runs in file, seems like a TL/AD test\n")
 		ntest = nt1%/%length(istep1)
 		stopifnot(nt2%%length(istep2) == 0)
 		stopifnot(ntest == nt2%/%length(istep2))
-		prefix = "TL"
 	} else if ((nt1+1)%%length(istep1) == 0) {
 		cat("--> several runs in file, seems like an AD test\n")
 		ntest = (nt1+1)%/%length(istep1)
 		stopifnot(any(nt2+1 == ntest*length(istep2)))
-		prefix = "AD"
 	} else {
 		cat("steps:",istep1,"\ndim(sp1):",nt1,"\n")
 		stop("several runs in file but unrecognized pattern")
 	}
 
-	st = paste(rep(paste(prefix,1:ntest-1,sep=""),each=length(indt)),indt-1,sep="_")
+	st = gsub("^(\\d+)","NL\\1",stn)
 	indt = indt+rep((1:ntest-1)*length(indt),each=length(indt))
 	if (length(indt) > dim(sp1)[1]) length(indt) = length(indt)-1
 	it = which(! is.na(indt))

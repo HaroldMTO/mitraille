@@ -39,7 +39,7 @@ Dependencies:
 
 fic1=""
 fic2=""
-spre="NORMS AT NSTEP CNT4"
+spre="NORMS AT (NSTEP|END) CNT4"
 gpre="gpnorm gflt0"
 sp=1
 gp=1
