@@ -494,11 +494,12 @@ do
 		elif [ -x $pack/bin/LFITOOLS ]
 		then
 			lfitools=$pack/bin/LFITOOLS
-		elif [ -d ~gco/packs ]
-		then
-			lfitools=$(find ~gco/packs -follow -mindepth 3 -maxdepth 3 -type f \
-				-name lfitools -o -name LFITOOLS | grep -E '_(main|op1)\..+\.2y\.pack' | \
-				sort -r | head -1)
+		else
+			lfitools=$(ls $packs/*.2y.pack/bin/lfitools 2>/dev/null | sort -r | head -1)
+			if [ -z "$lfitools" ]
+			then
+				lfitools=$(ls $packs/*.2y.pack/bin/LFITOOLS 2>/dev/null | sort -r | head -1)
+			fi
 		fi
 
 		if [ "$lfitools" ]
