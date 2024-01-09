@@ -33,7 +33,7 @@ environment is set from shell's startup, as login shell (-> .profile).
 looked for on HPC named MACHINE as an alternative to job local directory
 	-info: only print info on jobs that have succeeded and failed
 	-base/-res: run jobs on the specified base date and hour. If so, variable data \
-must exist (set in rcfile or in env) and point to a initial files as a path following \
+must exist (set in rcfile or in env) and point to initial files as a path following \
 pattern [HH]/[YYYYMMDD]/[initfile].
 	-prof: only print info on jobs profiles
 	-force: keep on submitting jobs even if any previously submitted job failed
@@ -164,7 +164,7 @@ help=0
 cycle=""
 rcfile=""
 conf=""
-optd="2y"
+opt="2y"
 env="ALL"
 bin0=""
 conf0=""
@@ -200,7 +200,7 @@ do
 			shift
 			;;
 		-opt)
-			optu=$2
+			opt=$2
 			shift
 			;;
 		-noenv) env="NONE";;
@@ -289,13 +289,10 @@ then
 	ls -d $packs $const $dirout
 fi
 
-[ -n "$optu" ] && opt=$optu || opt=$optd
-pack=$(find $packs -maxdepth 1 -type d -follow -name $(basename $cycle)\*.$opt.pack | \
-	tail -1)
-[ -z "$pack" ] &&
-	pack=$(find $packs -maxdepth 1 -type d -follow -name $(basename $cycle)\*.$opt | tail -1)
-[ -z "$pack" -a -z "$optu" ] &&
-	pack=$(find $packs -maxdepth 1 -type d -follow -name $(basename $cycle)\* | tail -1)
+cy=$(basename $cycle)
+pack=$(find -L $packs -maxdepth 1 -type d -name $cy\*.$opt.pack | tail -1)
+[ -z "$pack" ] && pack=$(find -L $packs -maxdepth 1 -type d -name $cy\*.$opt | tail -1)
+[ -z "$pack" ] && pack=$(find -L $packs -maxdepth 1 -type d -name $cy\* | tail -1)
 
 if [ -z "$pack" ]
 then
@@ -442,6 +439,7 @@ do
 	case $conf in
 		*_PGD*) name=pgd;;
 		*_DILA*) name=dila;;
+		*_ANSU_*) name=anasurf;;
 		GM_*) name=arpege;;
 		GE_*) name=ifs;;
 		L[123]_*LACE*|L[123]_*_ALR*) name=alaro;;
@@ -464,13 +462,9 @@ do
 		ls $finit > /dev/null
 		#MM=$(getbase $finit | cut -c5-6)
 		MM=$(echo $base | cut -c5-6)
-		if [ -z "$MM" ]
+		if [ -z "$MM" ] || [ $(echo $base | cut -c5-6) != $MM ]
 		then
-			echo "Error: month not found in '$finit'" >&2
-			exit 1
-		elif [ $(echo $base | cut -c5-6) != $MM ]
-		then
-			echo "Error: month not found in '$finit'" >&2
+			echo "Error: month '$MM' not found in '$finit'" >&2
 			exit 1
 		fi
 	fi
@@ -540,7 +534,7 @@ do
 	fpnam=$(cut -d " " -f3 fpos.txt | sed -re 's:[0-9]+$::' | uniq)
 	[ "$fpnam" ] && echo "fpnam=$fpnam" >> job.profile
 
-	diffnam=$(find $cycle/diffnam/ -name ${conf}_CONVPGD.nam)
+	diffnam=$(find $cycle/diffnam -name ${conf}_CONVPGD.nam)
 	if [ "$diffnam" ]
 	then
 		cat >> job.profile <<-EOF
@@ -572,9 +566,8 @@ do
 
 		tmpl=$config/job923tmpl.sh
 	else
-		init=$(grep -E ' (EBAUCHE|ICMSHARPEINIT)$' init.txt | \
-			sed -re 's:.+ (.+) .+:\1:')
-		if [ -n "$init" -a ! -s "$init" ]
+		init=$(grep -E ' (EBAUCHE|ICMSH\w+INIT)$' init.txt | sed -re 's:.+ (.+) .+:\1:')
+		if [ -n "$init" ] && [ ! -s $init ]
 		then
 			echo "Warning: IC file missing (cont'd): '$init'" >&2
 			continue
