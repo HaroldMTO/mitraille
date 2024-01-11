@@ -450,8 +450,12 @@ do
 
 	echo "Setting conf $conf in $name.sh $nnodes $wall' $bin"
 
-	awk -v dd=$ana '$1=="'$conf'" {
-		printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/initable > init.txt
+	{
+		awk -v dd=$ana '$1=="'$conf'" {
+			printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/initable
+		awk -v dd=$anasfx '$1=="'$conf'" {
+			printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/inisfxtable
+	} > init.txt
 
 	awk -v dd=$const/pgd '$1=="'$conf'" {
 		printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/constable > const.txt
@@ -480,6 +484,10 @@ do
 			printf("ln -sfv %s/%s %s\n",dd,fclim,$3);
 			}' $cycle/climfptable $cycle/filtertable
 	} > clim.txt
+
+	awk -v dd=$const/obs '$1=="'$conf'" {
+		printf("cp -rf %s/%s/* .\n",dd,$2);}' $cycle/obstable > odb.txt
+	[ -s odb.txt ] && cp $config/odb.sh $ddconf
 
 	{
 		if [ -x $pack/bin/lfitools ]
@@ -516,8 +524,6 @@ do
 		find $cycle/deltaquad/ -name $conf.\* -printf "quadnam=%p\n"
 		awk '$1=="'$conf'" {printf("pgd=%s\n",$2);}' $cycle/pgdtable
 		awk '$1=="'$conf'" {printf("pgdfa=../%s/%s\n",$2,$3);}' $cycle/pgdfatable
-		awk -v dd=$anasfx '$1=="'$conf'" {
-			printf("initsfx=%s/%s\n",dd,$2);}' $cycle/inisfxtable
 		awk -v dd=$coupling '$1=="'$conf'" {
 			printf("lbc=%s\n",gensub("^PATH",dd,"",$2));}' $cycle/coupltable
 		awk '$1=="'$conf'" {printf("ios=%s\n",$2);}' $cycle/ioservtable
@@ -606,7 +612,7 @@ do
 		-e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
 		-e "s:_nthreads:$nthread:g" -e "s:_maxmem:$mem:g" -e "s:_wall:$wall:g" \
 		-e "s:_varexp:$env:" -e "/TAG PROFILE/r job.profile" \
-		-e "/TAG CONST/r const.txt" -e "/TAG CLIM/r clim.txt" \
+		-e "/TAG CONST/r const.txt" -e "/TAG CLIM/r clim.txt" -e "/TAG ODB/r odb.txt" \
 		-e "/TAG FPOS/r fpos.txt" -e "/TAG INIT/r init.txt" $ddconf/$name.sh
 
 	[ $nj -eq 0 ] && continue

@@ -53,6 +53,11 @@ then
 	fi
 fi
 
+if [ -s odb.sh ]
+then
+	. odb.sh
+fi
+
 env > env.txt
 
 if [ -s $varenv ]
@@ -65,6 +70,8 @@ find -maxdepth 1 -name \*ARPE\* | \
 	grep -E '(ICMSH|PF|DHF(DL|ZO))ARPE.*\+[0-9]{4}(\.sfx)?$' | xargs rm -vf
 
 echo -e "\nStack limit: $(ulimit -s)"
+
+echo -e "\nCopying ODB database" # TAG ODB
 
 echo -e "\nLinking clims and filters for Surfex and FullPOS (if required)" # TAG CLIM
 
@@ -82,12 +89,6 @@ fi
 
 # conf GM/LAM 400, 500, 600
 [ -s ICMSHARPEINIT ] && cp -f ICMSHARPEINIT ICMSHARPEIMIN
-
-if [ "$initsfx" ]
-then
-	echo -e "\nLinking Initial Conditions for Surfex"
-	lnv $initsfx ICMSHARPEINIT.sfx
-fi
 
 if [ "$ecoclimap" ]
 then
