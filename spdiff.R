@@ -99,16 +99,16 @@ nstop = getvar("NSTOP",nd)
 ts1 = getvar("TSTEP",nd)
 
 # can be several in TL/AD tests
+ind = grep("SPECTRAL NORMS",nd)
 icnt4 = grep("START CNT4",nd)
 if (length(icnt4) == 0) {
 	cat("--> no forecast conf (cnt4) in 1st file\n")
-	quit("no")
+} else {
+	ind = ind[ind > icnt4[1]]
+	ind = ind[grep(cargs$spre,nd[ind-1])]
 }
 
-ind = grep("SPECTRAL NORMS",nd)
-ind = ind[ind > icnt4[1]]
-ind1 = grep(cargs$spre,nd[ind-1])
-sp1 = spnorm(nd,lev,ind[ind1])
+sp1 = spnorm(nd,lev,ind)
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep1 = seq(0,nstop,by=nfrsdi)
 nt1 = dim(sp1)[1]
@@ -124,16 +124,16 @@ ts2 = getvar("TSTEP",nd)
 
 if (ts2 != ts1) stop("incompatible TSTEP values")
 
+ind = grep("SPECTRAL NORMS",nd)
 icnt4 = grep("START CNT4",nd)
 if (length(icnt4) == 0) {
 	cat("--> no forecast conf (cnt4) in 2nd file\n")
-	quit("no")
+} else {
+	ind = ind[ind > icnt4[1]]
+	ind = ind[grep(cargs$spre,nd[ind-1])]
 }
 
-ind = grep("SPECTRAL NORMS",nd)
-ind = ind[ind > icnt4[1]]
-ind1 = grep(cargs$spre,nd[ind-1])
-sp2 = spnorm(nd,lev,ind[ind1])
+sp2 = spnorm(nd,lev,ind)
 nfrsdi = getvar(".+ NFRSDI",nd)
 istep2 = seq(0,nstop,by=nfrsdi)
 nt2 = dim(sp2)[1]
@@ -155,40 +155,48 @@ if (length(iv) == 0) {
 	stop("no variables in common to compare\n")
 }
 
-indt = match(istep2,istep1)
-it = which(istep2 %in% istep1)
-if (length(it) == 0) {
-	cat("steps:",length(istep1),length(istep2),"\n")
-	stop("no steps in common to compare\n")
-}
-
-ii = grep("NORMS AT (NSTEP|END) CNT4",nd)
-stn = gsub("^ *NORMS AT (NSTEP|END) CNT4(\\w*) +","\\2",nd[ii])
-st = indt-1
-if (nt2 > length(istep2)) {
-	ntest = (nt1+1)%/%length(istep1)
-
-	if (nt1%%length(istep1) == 0) {
-		cat("--> several runs in file, seems like a TL/AD test\n")
-		ntest = nt1%/%length(istep1)
-		stopifnot(nt2%%length(istep2) == 0)
-		stopifnot(ntest == nt2%/%length(istep2))
-	} else if ((nt1+1)%%length(istep1) == 0) {
-		cat("--> several runs in file, seems like an AD test\n")
-		ntest = (nt1+1)%/%length(istep1)
-		stopifnot(any(nt2+1 == ntest*length(istep2)))
-	} else {
-		cat("steps:",istep1,"\ndim(sp1):",nt1,"\n")
-		stop("several runs in file but unrecognized pattern")
+if (length(icnt4) == 0) {
+	stopifnot(dim(sp1)[1] == dim(sp2)[1])
+	indt = seq(dim(sp1)[1])
+	it = indt
+	st = indt
+} else {
+	indt = match(istep2,istep1)
+	it = which(istep2 %in% istep1)
+	if (length(it) == 0) {
+		cat("steps:",length(istep1),length(istep2),"\n")
+		stop("no steps in common to compare\n")
 	}
 
-	st = gsub("^(\\d+)","NL\\1",stn)
-	indt = indt+rep((1:ntest-1)*length(indt),each=length(indt))
-	if (length(indt) > dim(sp1)[1]) length(indt) = length(indt)-1
-	it = which(! is.na(indt))
+	ii = grep("NORMS AT (NSTEP|END) CNT4",nd)
+	stn = gsub("^ *NORMS AT (NSTEP|END) CNT4(\\w*) +","\\2",nd[ii])
+	st = indt-1
+	if (nt2 > length(istep2)) {
+		ntest = (nt1+1)%/%length(istep1)
+
+		if (nt1%%length(istep1) == 0) {
+			cat("--> several runs in file, seems like a TL/AD test\n")
+			ntest = nt1%/%length(istep1)
+			stopifnot(nt2%%length(istep2) == 0)
+			stopifnot(ntest == nt2%/%length(istep2))
+		} else if ((nt1+1)%%length(istep1) == 0) {
+			cat("--> several runs in file, seems like an AD test\n")
+			ntest = (nt1+1)%/%length(istep1)
+			stopifnot(any(nt2+1 == ntest*length(istep2)))
+		} else {
+			cat("steps:",istep1,"\ndim(sp1):",nt1,"\n")
+			stop("several runs in file but unrecognized pattern")
+		}
+
+		st = gsub("^(\\d+)","NL\\1",stn)
+		indt = indt+rep((1:ntest-1)*length(indt),each=length(indt))
+		if (length(indt) > dim(sp1)[1]) length(indt) = length(indt)-1
+		it = which(! is.na(indt))
+	}
+
+	st = na.omit(st)
 }
 
-st = na.omit(st)
 sp1 = sp1[na.omit(indt),,na.omit(indv),drop=FALSE]
 sp2 = sp2[it,,iv,drop=FALSE]
 ndiff = sapply(1:dim(sp1)[3],function(i) diffnorm(sp1[,1,i],sp2[,1,i]))

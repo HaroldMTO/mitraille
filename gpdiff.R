@@ -15,55 +15,6 @@ line2num = function(nd)
 	sapply(lre,as.numeric)
 }
 
-gpnorm2D = function(nd)
-{
-	nd = grep("^ *$",nd,value=TRUE,invert=TRUE)
-	ind = grep("^ *NUMFLDS=",nd)
-	indo = grep("^ *GPNORM OUTPUT",nd)
-
-	nfg = as.integer(sub(" *NUMFLDS= *(\\d+) .+","\\1",nd[ind]))
-	ind = ind[nfg > 0]
-	nfg = nfg[nfg > 0]
-	surf = list()
-	group = character()
-
-	for (i in seq(along=ind)) {
-		group[i] = sub("^.+ (\\w+) +- +.+","\\1",nd[ind[i]-1])
-		gnames = sub("^ *\\w+( +\\d+)+ +(\\w+(\\.\\w+)?).+","\\2",nd[ind[i]+seq(nfg[i])])
-
-		ii = grep(sprintf("\\<%s\\>",group[i]),nd[indo-1])
-		if (length(ii) == 0) {
-			group[i] = sub("^ *(\\w+) +.+","\\1",nd[ind[i]+1])
-			ii = grep(sprintf("\\<%s\\>",group[i]),nd[indo-1])
-			if (length(ii) == 0) {
-				#cat("--> no GP norms for group",group[i],i,"\n")
-				next
-			}
-		}
-
-		ii = ii[1]
-		if (regexpr(", +FIELD +\\d+",nd[indo[ii]-1]) > 0) {
-			# nfg lines AVE, every 4 lines (group, GPNORM, AVE, 1)
-			indi = indo[ii]+(seq(nfg[i])-1)*4+1
-		} else if (regexpr(" \\d+ +FIELDS\\>",nd[indo[ii]-1]) > 0) {
-			# nfg lines AVE, every 3 lines (GPNORM, AVE, 1)
-			indi = indo[ii]+(seq(nfg[i])-1)*3+1
-		} else {
-			# nfg lines after GPNORM and AVE
-			indi = indo[ii]+seq(nfg[i])+1
-		}
-
-		gpre = regmatches(nd[indi],gregexpr(sprintf("(%s|NaN)",Gnum),nd[indi]))
-		gpre = lapply(gpre,function(x) gsub("(\\d+)(\\-\\d+)","\\1E\\2",x))
-		gpn = t(sapply(gpre,as.numeric))
-		dimnames(gpn) = list(gnames,c("ave","min","max"))
-		surf[[i]] = gpn
-	}
-
-	names(surf) = group[seq(along=surf)]
-	surf[sapply(surf,length) > 0]
-}
-
 gpnorm = function(nd,lev,ind,noms)
 {
 	if (missing(ind)) {
@@ -200,15 +151,10 @@ nl2 = 2+has.levels*nflevg
 nstop = getvar("NSTOP",nd)
 ts1 = getvar("TSTEP",nd)
 icnt4 = grep("START CNT4",nd)
-if (length(icnt4) == 0) {
-	cat("--> no forecast conf (cnt4) in 1st file\n")
-	quit("no")
-}
-
-surf1 = gpnorm2D(nd)
+if (length(icnt4) == 0) cat("--> no forecast conf (cnt4) in 1st file\n")
 
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
-ind = ind[ind > icnt4[1]]
+if (length(icnt4) > 0) ind = ind[ind > icnt4[1]]
 
 # check presence of norms for GFL t0
 indo = grep(sprintf("GPNORM +(%s|OUTPUT) +AVERAGE",gpfre),nd[ind],invert=TRUE)
@@ -227,7 +173,8 @@ if (length(ind1) == 0 && cargs$gpre == "gpnorm gflt0") {
 }
 
 if (length(ind1) == 0) {
-	cat("--> no print for pattern",cargs$gpre,"in file 1, searching for norms by names found:\n")
+	cat("--> no print for pattern",cargs$gpre,
+		"in file 1, searching for norms by names found:\n")
 	# looking for the 1st group of norm print
 	ind = ind[indo]
 	i1 = grep("^ *gpnorm +\\w",nd)
@@ -272,15 +219,10 @@ nd = grep("^ *$",nd,value=TRUE,invert=TRUE)
 nstop = getvar("NSTOP",nd)
 ts2 = getvar("TSTEP",nd)
 icnt4 = grep("START CNT4",nd)
-if (length(icnt4) == 0) {
-	cat("--> no forecast conf (cnt4) in 1st file\n")
-	quit("no")
-}
-
-surf2 = gpnorm2D(nd)
+if (length(icnt4) == 0) cat("--> no forecast conf (cnt4) in 2nd file\n")
 
 ind = grep("GPNORM +\\w+.* +AVERAGE",nd)
-ind = ind[ind > icnt4[1]]
+if (length(icnt4) > 0) ind = ind[ind > icnt4[1]]
 
 if (ts1 != ts2) stop("different TSTEP")
 
@@ -298,7 +240,8 @@ if (cargs$gpre == "gpnorm gflt0") {
 }
 
 if (length(ind1) == 0) {
-	cat("--> no print for pattern",cargs$gpre,"in file 2, searching for norms by names found:\n")
+	cat("--> no print for pattern",cargs$gpre,
+		"in file 2, searching for norms by names found:\n")
 	# looking for the 1st group of norm print
 	ind = ind[indo]
 	i1 = grep("^ *gpnorm +\\w",nd)
@@ -341,15 +284,15 @@ noms1 = dimnames(gp1)[[4]]
 noms2 = dimnames(gp2)[[4]]
 
 indv = match(noms1,noms2)
-if (any(is.na(indv))) cat("missing GFL variables in 2nd file :",noms1[is.na(indv)],"\n")
+if (any(is.na(indv))) cat("missing variables in 2nd file :",noms1[is.na(indv)],"\n")
 
 indv = match(noms2,noms1)
 iv = which(noms2 %in% noms1)
-if (any(is.na(indv))) cat("new GFL variables :",noms2[is.na(indv)],"\n")
+if (any(is.na(indv))) cat("new variables :",noms2[is.na(indv)],"\n")
 if (length(iv) == 0) {
 	cat("variables (1):",noms1,"\n")
 	cat("variables (2):",noms2,"\n")
-	stop("no GFL variables in common to compare\n")
+	stop("no variables in common to compare\n")
 }
 
 indt = match(istep2,istep1)
@@ -479,54 +422,5 @@ if (nt1 > length(istep1) && regexpr("gpnorm g(mv|fl)t0 traj",cargs$gpre) > 0) {
 		}
 
 		for (i in ind) cat(format(st1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
-	}
-}
-
-if (length(surf1) > 0) {
-	noms1 = names(surf1)
-	noms2 = names(surf2)
-	indv = match(noms1,noms2)
-	if (any(is.na(indv))) cat("missing clim variables in 2nd file :",noms1[is.na(indv)],"\n")
-	iv = which(noms2 %in% noms1)
-	if (any(is.na(indv))) cat("new clim variables :",noms2[is.na(indv)],"\n")
-	if (length(iv) == 0) {
-		cat("variables (1):",noms1,"\n")
-		cat("variables (2):",noms2,"\n")
-		stop("no clim variables in common to compare\n")
-	}
-
-	for (i in na.omit(indv)) {
-		gp1 = surf1[[i]]
-		gp2 = surf2[[indv[i]]]
-		ndiff = array(round(diffnorm(gp1,gp2)),dim=dim(gp1))
-
-		noms = dimnames(gp1)[[1]]
-		if (max(nchar(noms))*length(noms) > 65) noms = abbreviate(noms,5)
-		if (max(nchar(noms)) > 12 || mnx) {
-			fmt = "%12s"
-		} else if (max(nchar(noms)) > 7 || mnx) {
-			fmt = "%8s"
-		} else if (max(nchar(noms)) > 5) {
-			fmt = "%6s"
-		} else {
-			fmt = "%5s"
-		}
-
-		cat(" step",sprintf(fmt,noms),"\n")
-		if (all(ndiff == 0)) {
-			if (mnx) {
-				sdiff = apply(ndiff,1,function(x) paste(sprintf("%g",x),collapse="/"))
-				cat("Setup",sprintf(fmt,sdiff),"\n")
-			} else {
-				cat("Setup",sprintf(fmt,ndiff[,1]),"\n")
-			}
-		} else {
-			if (mnx) {
-				sdiff = apply(ndiff,4,function(x) paste(sprintf("%g",x),collapse="/"))
-				cat("Setup",sprintf(fmt,sdiff),"\n")
-			} else {
-				cat("Setup",sprintf(fmt,ndiff[,1]),"\n")
-			}
-		}
 	}
 }
