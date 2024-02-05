@@ -3,7 +3,7 @@
 #SBATCH -J _name
 #SBATCH -N _nnodes
 #SBATCH -n _ntaskt
-#SBATCH -c _nthreads
+##SBATCH -c _nthreads
 #SBATCH --time "_wall"
 #SBATCH --exclusiv
 #SBATCH -o _name.log
@@ -53,11 +53,6 @@ then
 	fi
 fi
 
-if [ -s odb.sh ]
-then
-	. odb.sh
-fi
-
 env > env.txt
 
 if [ -s $varenv ]
@@ -71,7 +66,11 @@ find -maxdepth 1 -name \*ARPE\* | \
 
 echo -e "\nStack limit: $(ulimit -s)"
 
-echo -e "\nCopying ODB database" # TAG ODB
+echo -e "\nCopying satellite constants" # TAG SAT
+
+echo -e "\nCopying statistics" # TAG STAT
+
+echo -e "\nCopying ODB database, setting environment" # TAG ODB
 
 echo -e "\nLinking clims and filters for Surfex and FullPOS (if required)" # TAG CLIM
 
@@ -83,8 +82,8 @@ echo -e "\nLinking Initial Conditions" # TAG INIT
 # conf GM 400, 500
 if [ -s EBAUCHE ]
 then
-	cp -f EBAUCHE ICMSHARPEINIT
-	chmod 644 ICMSHARPEINIT
+	ln -sf EBAUCHE ICMSHARPEINIT
+	cp -f EBAUCHE ICMRFARPE0000
 fi
 
 # conf GM/LAM 400, 500, 600

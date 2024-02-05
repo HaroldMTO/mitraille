@@ -1,7 +1,11 @@
-# mandatory variables for ODB (CANARI)
+# mandatory variables for ODB
 export ODB_CMA=ECMA
 export ODB_SRCPATH_ECMA=ECMA_CAN
 export ODB_DATAPATH_ECMA=ECMA_CAN
 export ODB_IDXPATH_ECMA=ECMA_CAN/idx
 export ODB_MERGEODB_DIRECT=1
 export ODB_OVERWRITE_METHOD=1
+export NPROCA=_ntasks
+export NPROCB=1
+
+cp -f ECMA_CAN/IOASSIGN .

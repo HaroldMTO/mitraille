@@ -42,6 +42,8 @@ pattern [HH]/[YYYYMMDD]/[initfile].
 20 omp).
 	-nogp: in norms checking, activate -nogp option (no grid-point norms, cf \
 normdiff.sh)
+	-nosurf: in norms checking, activate -nosr=urf option (no norms for surface fields, \
+cf normdiff.sh)
 	-nostat: deactivate statistics checkings on data files produced by the jobs
 	-h: print this help and exit normally
 
@@ -100,7 +102,7 @@ logdiff()
 		return
 	fi
 
-	normdiff.sh $rrconf/NODE.001_01 $ddconf/NODE.001_01 $nogp
+	normdiff.sh $rrconf/NODE.001_01 $ddconf/NODE.001_01 $nogp $nosurf
 
 	[ $stat -eq 0 ] && return
 
@@ -179,6 +181,7 @@ force=0
 rerun=0
 inter=0
 nogp=""
+nosurf=""
 stat=1
 hpc=""
 
@@ -244,6 +247,7 @@ do
 		-prof) prof=1;;
 		-force) force=1;;
 		-nogp) nogp="-nogp";;
+		-nosurf) nosurf="-nosurf";;
 		-nostat) stat=0;;
 		-f) rerun=1;;
 		-i) inter=1;;
@@ -440,6 +444,8 @@ do
 		*_PGD*) name=pgd;;
 		*_DILA*) name=dila;;
 		*_ANSU_*) name=anasurf;;
+		*_SCRE_*) name=screen;;
+		*_MINI_*) name=minim;;
 		GM_*) name=arpege;;
 		GE_*) name=ifs;;
 		L[123]_*LACE*|L[123]_*_ALR*) name=alaro;;
@@ -485,9 +491,20 @@ do
 			}' $cycle/climfptable $cycle/filtertable
 	} > clim.txt
 
-	awk -v dd=$const/obs '$1=="'$conf'" {
-		printf("cp -rf %s/%s/* .\n",dd,$2);}' $cycle/obstable > odb.txt
-	[ -s odb.txt ] && cp $config/odb.sh $ddconf
+	if [ -s $cycle/obstable ]
+	then
+		awk -v dd=$const/obs '$1=="'$conf'" {
+			printf("cp -rf %s/%s/* .\n",dd,$2);}' $cycle/obstable > odb.txt
+	fi
+
+	if [ -s $cycle/stattable ]
+	then
+		awk -v dd=$const/obs '$1=="'$conf'" {
+			printf("ln -sf %s/%s/* .\n",dd,$2);}' $cycle/sattable > sat.txt
+
+		awk -v dd=$const/obs '$1=="'$conf'" {
+			printf("ln -sf %s/%s/* .\n",dd,$2);}' $cycle/stattable > stat.txt
+	fi
 
 	{
 		if [ -x $pack/bin/lfitools ]
@@ -590,7 +607,10 @@ do
 	ntask=$((ntaskt-ntaskio))
 	ntpn=$((ntaskt/nnodes))
 
+	echo "Creating $ddconf"
 	mkdir -p $ddconf
+
+	[ -s odb.txt ] && sed -e "s:_ntasks:$ntask:g" $config/odb$name.sh >> odb.txt
 
 	cp $config/IFSenv.txt $config/env.sh $ddconf
 	if [ -s $cycle/$bin.nml ]
@@ -612,8 +632,12 @@ do
 		-e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
 		-e "s:_nthreads:$nthread:g" -e "s:_maxmem:$mem:g" -e "s:_wall:$wall:g" \
 		-e "s:_varexp:$env:" -e "/TAG PROFILE/r job.profile" \
-		-e "/TAG CONST/r const.txt" -e "/TAG CLIM/r clim.txt" -e "/TAG ODB/r odb.txt" \
-		-e "/TAG FPOS/r fpos.txt" -e "/TAG INIT/r init.txt" $ddconf/$name.sh
+		-e "/TAG CONST/r const.txt" -e "/TAG CLIM/r clim.txt" -e "/TAG SAT/r sat.txt" \
+		-e "/TAG ODB/r odb.txt" -e "/TAG STAT/r stat.txt" -e "/TAG FPOS/r fpos.txt" \
+		-e "/TAG INIT/r init.txt" $ddconf/$name.sh
+	[ $name = "screen" ] && sed -i -re 's:(ICM..)ARPE:\1SCRE:g' $ddconf/$name.sh
+	[ $name = "minim" ] && sed -i -re 's:(ICM..)ARPE:\1MINI:g' $ddconf/$name.sh
+	[ $name = "anasurf" ] && sed -i -re 's:(ICM..)ARPE:\1ANSU:g' $ddconf/$name.sh
 
 	[ $nj -eq 0 ] && continue
 
