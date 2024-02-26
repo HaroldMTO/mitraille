@@ -179,7 +179,7 @@ then
 
 		if grep -qE '\<LVERTFE.+FALSE' $ficold
 		then
-			grep -ivE '^ *\<[LNR]VFE_' $ficold > $fic
+			grep -ivE '^ *\<[LNR]VFE_' $ficold > $ficnew
 			continue
 		fi
 

@@ -117,7 +117,7 @@ countfield = function(ind,ind1,nl2)
 	}
 }
 
-indexpand = function(ind,nf,nl)
+indexpand = function(ind,nf,nl2)
 {
 	rep(ind,each=nf)+(seq(nf)-1)*nl2
 }
