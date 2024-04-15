@@ -9,7 +9,7 @@ Description:
 	Check the difference between 2 'NODE' file in terms of spectral and grid-point norms
 
 Usage:
-	normdiff.sh NODE1 NODE2 [-spre RE|-nosp] [-gpre RE|-nogp] [-nosurf] [-fp] [-h]
+	normdiff.sh NODE1 NODE2 [-spre RE|-nosp] [-gpre RE|-nogp] [-nosurf] [-nofp] [-h]
 
 Arguments:
 	NODE1/2: path to 2 'NODE' files
@@ -18,7 +18,7 @@ Arguments:
 	-nosp: do not check differences for 'NODE' prints of spectral norms
 	-nogp: do not check differences for 'NODE' prints of grid-point norms
 	-nosurf: do not check differences for 'NODE' prints of surface grid-point norms
-	-fp: check differences also for 'NODE' prints of FULL-POS norms (grid-point)
+	-nofp: do not checl differences for 'NODE' prints of FullPOS norms
 	-h: print this help and exits normally
 
 Details:
@@ -27,7 +27,7 @@ Details:
 	Default spectral norms compared rely on blocks of norms following pattern \
 'NORMS AT (NSTEP|END) CNT4', if found in files. With option '-spre', blocks of norms \
 follow pattern RE, which should be present in both files.
-	Default grid-point norms are printed for GMV t0 without any pattern indicating them. \
+	Default grid-point norms are printed for GFL t0 without any pattern indicating them. \
 Option '-gpre' lets specify other blocks of GP norms that follow pattern RE, \
 which should be present in both files.
 
@@ -44,22 +44,22 @@ fi
 
 fic1=""
 fic2=""
-spre="NORMS AT (NSTEP|END) CNT4"
-gpre="gpnorm gflt0"
+spre=""
+gpre=""
 sp=1
 gp=1
+fp=1
 surf=1
-fp=FALSE
 
 while [ $# -ne 0 ]
 do
 	case $1 in
 		-spre)
-			spre="$2"
+			spre="re=$2"
 			shift
 			;;
 		-gpre)
-			gpre="$2"
+			gpre="re=$2"
 			shift
 			;;
 		-nosp)
@@ -68,11 +68,11 @@ do
 		-nogp)
 			gp=0
 			;;
+		-nofp)
+			fp=0
+			;;
 		-nosurf)
 			surf=0
-			;;
-		-fp)
-			fp=TRUE
 			;;
 		-h)
 			usage
@@ -105,37 +105,23 @@ fi
 if [ $sp -eq 1 ]
 then
 	echo ". SP norms difference (up to 17):"
-	R --slave -f $mitra/spdiff.R --args fic1=$fic1 fic2=$fic2 spre="$spre"
+	R --slave -f $mitra/spdiff.R --args fic1=$fic1 fic2=$fic2 $spre
 fi
 
 if [ $gp -eq 1 ]
 then
 	echo ". GP norms difference (up to 17):"
-	R --slave -f $mitra/gpdiff.R --args fic1=$fic1 fic2=$fic2 fp=$fp gpre="$gpre"
+	R --slave -f $mitra/gpdiff.R --args fic1=$fic1 fic2=$fic2 $gpre
+fi
+
+if [ $fp -eq 1 ]
+then
+	echo ". FP norms difference (up to 17):"
+	R --slave -f $mitra/fpdiff.R --args fic1=$fic1 fic2=$fic2
 fi
 
 if [ $surf -eq 1 ]
 then
 	echo ". Surface GP norms difference (up to 17):"
 	R --slave -f $mitra/surfdiff.R --args fic1=$fic1 fic2=$fic2
-fi
-
-if false
-then
-	echo ". SP norms agreement (up to 17):"
-	if grep -qE 'AVE .+[0-9][-+][0-9]' $fic1
-	then
-		echo "--> correction of spectral norms printings"
-		sed -i -re 's:(AVE .+[0-9])([-+][0-9]):\1E\2:' $fic1
-	fi
-
-	if grep -qE 'AVE .+[0-9][-+][0-9]' $fic2
-	then
-		echo "--> correction of spectral norms printings"
-		sed -i -re 's:(AVE .+[0-9])([-+][0-9]):\1E\2:' $fic2
-	fi
-
-	spdiff $fic1 $fic2 | grep -vE '^$' | sed -re 's:^# +:  step(s)\|:' \
-		-e 's: +$::' -e 's: {2,}([A-Z]+):\|\1:g' \
-		-e 's:([0-9]+)\.[0-9]+e[+-]?[0-9]+ +::g'
 fi

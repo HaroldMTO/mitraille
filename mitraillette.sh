@@ -468,7 +468,7 @@ do
 
 	if [ -n "$base" -a -s init.txt ]
 	then
-		finit=$(sed -re 's:ln \-sfv ([^ ]+) .+:\1:' init.txt)
+		finit=$(head -1 init.txt | sed -re 's:ln \-sfv ([^ ]+) .+:\1:')
 		ls $finit > /dev/null
 		#MM=$(getbase $finit | cut -c5-6)
 		MM=$(echo $base | cut -c5-6)
