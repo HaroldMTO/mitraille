@@ -19,7 +19,7 @@ Arguments:
 	-nogp: do not check differences for 'NODE' prints of grid-point norms
 	-nosurf: do not check differences for 'NODE' prints of surface grid-point norms
 	-nofp: do not checl differences for 'NODE' prints of FullPOS norms
-	-h: print this help and exits normally
+	-h: print this help and exit normally
 
 Details:
 	Spectral norms are printed showing number of digits in common between the 2 \
@@ -36,7 +36,7 @@ Dependencies:
 "
 }
 
-if [ $# -eq 0 ]
+if [ $# -eq 0 ] || echo " $*" | grep -qE ' \-h\>'
 then
 	usage
 	exit
@@ -50,37 +50,46 @@ sp=1
 gp=1
 fp=1
 surf=1
+opt=""
 
 while [ $# -ne 0 ]
 do
 	case $1 in
-		-spre)
-			spre="re=$2"
-			shift
-			;;
-		-gpre)
-			gpre="re=$2"
-			shift
-			;;
-		-nosp)
-			sp=0
-			;;
-		-nogp)
-			gp=0
-			;;
-		-nofp)
-			fp=0
-			;;
-		-nosurf)
-			surf=0
-			;;
-		-h)
-			usage
-			exit
-			;;
-		*)
-			[ -z "$fic1" ] && fic1=$1 || fic2=$1
-			;;
+	-spre)
+		spre="re=$2"
+		shift
+		;;
+	-gpre)
+		gpre="re=$2"
+		shift
+		;;
+	-nosp)
+		sp=0
+		;;
+	-nogp)
+		gp=0
+		;;
+	-nofp)
+		fp=0
+		;;
+	-nosurf)
+		surf=0
+		;;
+	-mnx)
+		opt="mnx=TRUE"
+		;;
+	*)
+		if [ -z "$fic1" ]
+		then
+			fic1=$1
+		elif [ -z "$fic2" ]
+		then
+			fic2=$1
+		else
+			echo "Error: files 1 & 2 already set as '$fic1' '$fic2', unknown option '$1'" >&2
+			exit 1
+		fi
+		;;
 	esac
 
 	shift
@@ -88,13 +97,22 @@ done
 
 if [ -z "$fic1" -o -z "$fic2" ]
 then
-	usage >&2
+	echo "Error: missing mandatory arguments:
+fic1: '$fic1'
+fic2: '$fic2'" >&2
 	exit 1
 fi
 
 set -e
 
 type R > /dev/null 2>&1 || module -s load intel R > /dev/null 2>&1
+if ! env | grep -qw R_LIBS
+then
+	export R_LIBS=~petithommeh/lib
+	echo "--> setting R_LIBS: $R_LIBS"
+else
+	R_LIBS=$R_LIBS:~petithommeh/lib
+fi
 
 if ! grep -qi 'spectral norms' $fic1
 then
@@ -111,17 +129,17 @@ fi
 if [ $gp -eq 1 ]
 then
 	echo ". GP norms difference (up to 17):"
-	R --slave -f $mitra/gpdiff.R --args fic1=$fic1 fic2=$fic2 $gpre
+	R --slave -f $mitra/gpdiff.R --args fic1=$fic1 fic2=$fic2 $gpre $opt
 fi
 
 if [ $fp -eq 1 ]
 then
 	echo ". FP norms difference (up to 17):"
-	R --slave -f $mitra/fpdiff.R --args fic1=$fic1 fic2=$fic2
+	R --slave -f $mitra/fpdiff.R --args fic1=$fic1 fic2=$fic2 $opt
 fi
 
 if [ $surf -eq 1 ]
 then
 	echo ". Surface GP norms difference (up to 17):"
-	R --slave -f $mitra/surfdiff.R --args fic1=$fic1 fic2=$fic2
+	R --slave -f $mitra/surfdiff.R --args fic1=$fic1 fic2=$fic2 $opt
 fi

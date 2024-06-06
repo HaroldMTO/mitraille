@@ -23,8 +23,27 @@ then
 fi
 
 lstRE="\.(log|out|err)|(drhook|ifs|meminfo|linux_bind|core|std(out|err))\."
-alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --'
 alias lnv='ln -sfv'
+
+if [ -n "$MPI_COMMAND" ]
+then
+	echo "Run MPI with command $MPI_COMMAND"
+	alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --prefix-command $MPI_COMMAND --'
+elif type mpirun >dev/null 2>&1
+then
+	module load intelmpi
+	if [ -n "$MAP_OPT" ]
+	then
+		echo "Run MPI with map and options '$MAP_OPT'"
+		module load arm
+		alias mpiexe='map mpirun $MAP_OPT -np _ntaskt -ppn _ntpn'
+	else
+		echo "Run MPI with command mpirun"
+		alias mpiexe='mpirun -np _ntaskt -ppn _ntpn'
+	fi
+else
+	alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --'
+fi
 
 set -e
 

@@ -162,7 +162,12 @@ jobwait()
 	done < jobs.txt
 }
 
-help=0
+if [ $# -eq 0 ]
+then
+	usage
+	exit
+fi
+
 cycle=""
 rcfile=""
 conf=""
@@ -184,8 +189,6 @@ nogp=""
 nosurf=""
 stat=1
 hpc=""
-
-[ $# -eq 0 ] && help=1
 
 while [ $# -ne 0 ]
 do
@@ -251,20 +254,16 @@ do
 		-nostat) stat=0;;
 		-f) rerun=1;;
 		-i) inter=1;;
-		-h) help=1;;
 		*)
 			echo "Error: unknown option '$1'" >&2
-			exit 1;;
+			exit 1
+			;;
 	esac
 
 	shift
 done
 
-if [ $help -eq 1 ]
-then
-	usage
-	exit
-elif [ -z "$cycle" -o -z "$rcfile" ]
+if [ -z "$cycle" -o -z "$rcfile" ]
 then
 	printf "Error: mandatory arguments missing
 cycle: '$cycle'

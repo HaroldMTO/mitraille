@@ -102,33 +102,24 @@ if (max(nchar(noms)) > 7 || mnx) {
 cat(" step",sprintf(fmt,noms),"\n")
 nt = dim(gp1)[1]
 if (all(ndiff == 0)) {
-	if (mnx) {
-		for (i in seq(min(5,nt))) {
-			sdiff = apply(ndiff,4,function(x) paste(sprintf("%g",x[i,1,]),collapse="/"))
-			cat(format(step1[i],width=5),sprintf(fmt,sdiff),"\n")
-		}
-	} else {
-		for (i in seq(min(5,nt))) {
-			cat(format(step1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
-		}
-	}
-
-	if (nt > 5) cat("...",nt-min(5,nt),"more 0 lines\n")
+	ind = seq(min(nt,5))
 } else {
 	ind = seq(min(nt,15))
+}
 
-	if (mnx) {
-		for (i in ind) {
-			sdiff = apply(ndiff,4,function(x) paste(sprintf("%g",x[i,1,]),collapse="/"))
-			cat(format(step1[i],width=5),sprintf(fmt,sdiff),"\n")
-		}
-	} else {
-		for (i in ind) cat(format(step1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
-	}
+if (mnx) {
+	sdiff = apply(ndiff,c(1,4),function(x) paste(sprintf("%g",x[1,]),collapse="/"))
+	for (i in ind) cat(format(step1[i],width=5),sprintf(fmt,sdiff[i,]),"\n")
+} else {
+	for (i in ind) cat(format(step1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
+}
 
+if (all(ndiff == 0)) {
+	if (nt > 5) cat("...",nt-length(ind),"more 0 lines\n")
+} else {
 	if (nt > 30) {
 		cat("... (every",nt%/%30,"printed time-step)\n")
-		ind = seq(15,nt,by=nt%/%30)[-1]
+		ind = seq(length(ind),nt,by=nt%/%30)[-1]
 		for (i in ind) cat(format(step1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
 	}
 }

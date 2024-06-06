@@ -9,8 +9,11 @@ ts1 = getvar("TSTEP",nd)
 has.fc = any(regexpr("^ *START CNT4",nd) > 0)
 if (! has.fc) cat("--> no forecast conf (cnt4) in 1st file\n")
 
-fp1 = fpgpnorm(nd,0)
-#fp1 = fpnorm(nd,0)
+if (is.null(cargs$re)) {
+	fp1 = fpgpnorm(nd,0)
+} else {
+	fp1 = fpgpnorm(nd,0,cargs$re)
+}
 
 if (is.null(fp1)) {
 	cat("--> no FP norms in 1st file\n")
@@ -66,8 +69,8 @@ if (length(step1) != length(step2)) {
 
 it = which(! is.na(indt))
 
-fp1 = fp1[na.omit(indt),1,na.omit(indv),drop=FALSE]
-fp2 = fp2[it,1,iv,drop=FALSE]
+fp1 = fp1[na.omit(indt),,,na.omit(indv),drop=FALSE]
+fp2 = fp2[it,,,iv,drop=FALSE]
 #fp1 = sapply(fp1[na.omit(indv)],function(x) x[na.omit(indt),,drop=FALSE],simplify="array")
 #fp2 = sapply(fp2[iv],function(x) x[it,,drop=FALSE],simplify="array")
 
@@ -89,33 +92,26 @@ if (max(nchar(noms)) > 7 || mnx) {
 cat(" step",sprintf(fmt,noms),"\n")
 nt = dim(fp1)[1]
 if (all(ndiff == 0)) {
-	if (mnx) {
-		for (i in seq(min(5,nt))) {
-			sdiff = apply(ndiff,3,function(x) paste(sprintf("%g",x[i,,]),collapse="/"))
-			cat(format(step1[i],width=5),sprintf(fmt,sdiff),"\n")
-		}
-	} else {
-		for (i in seq(min(5,nt))) {
-			cat(format(step1[i],width=5),sprintf(fmt,ndiff[i,1,]),"\n")
-		}
-	}
-
-	if (nt > 5) cat("...",nt-min(5,nt),"more 0 lines\n")
+	ind = seq(min(nt,5))
 } else {
 	ind = seq(min(nt,15))
+}
 
-	if (mnx) {
-		for (i in ind) {
-			sdiff = apply(ndiff,4,function(x) paste(sprintf("%g",x[i,,]),collapse="/"))
-			cat(format(step1[i],width=5),sprintf(fmt,sdiff),"\n")
-		}
-	} else {
-		for (i in ind) cat(format(step1[i],width=5),sprintf(fmt,ndiff[i,1,]),"\n")
+if (mnx) {
+	sdiff = apply(ndiff,c(1,4),function(x) paste(sprintf("%g",x[1,]),collapse="/"))
+	for (i in ind) cat(format(step1[i],width=5),sprintf(fmt,sdiff[i,]),"\n")
+} else {
+	for (i in ind) {
+		cat(format(step1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
 	}
+}
 
+if (all(ndiff == 0)) {
+	if (nt > length(ind)) cat("...",nt-length(ind),"more 0 lines\n")
+} else {
 	if (nt > 30) {
 		cat("... (every",nt%/%30,"printed time-step)\n")
-		ind = seq(15,nt,by=nt%/%30)[-1]
-		for (i in ind) cat(format(step1[i],width=5),sprintf(fmt,ndiff[i,1,]),"\n")
+		ind = seq(length(ind),nt,by=nt%/%30)[-1]
+		for (i in ind) cat(format(step1[i],width=5),sprintf(fmt,ndiff[i,1,1,]),"\n")
 	}
 }

@@ -108,10 +108,8 @@ for (i in na.omit(indv)) {
 
 	cat(sprintf("Group %-13s",names(surf1)[i]),paste(step,collapse="\t"),"\n")
 	if (mnx) {
-		for (j in seq(dim(ndiff)[1])) {
-			sdiff = apply(ndiff[j,,],2,function(x) paste(sprintf("%g",x),collapse="/"))
-			cat("\t",noms[j],sprintf("% 7d",sdiff),"\n")
-		}
+		sdiff = apply(ndiff,c(1,3),function(x) paste(sprintf("%g",x),collapse="/"))
+		for (j in seq(dim(ndiff)[1])) cat("\t",noms[j],sprintf("% 7s",sdiff[j,]),"\n")
 	} else {
 		for (j in seq(dim(ndiff)[1])) cat("\t",noms[j],sprintf("% 7d",ndiff[j,1,]),"\n")
 	}
