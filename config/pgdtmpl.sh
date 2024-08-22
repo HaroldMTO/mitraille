@@ -27,9 +27,16 @@ export DR_HOOK_NOT_MPI=1
 env > env.txt
 
 lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|NODE|core|std(out|err))\."
-alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --'
 alias mpiexe1='mpiauto --wrap -nn 1 -np 1 -nnp 1 --'
 alias lnv='ln -sfv'
+
+if [ -n "$MPI_COMMAND" ]
+then
+	echo "Run MPI with command $MPI_COMMAND"
+	alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --prefix-command $MPI_COMMAND --'
+else
+	alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --'
+fi
 
 set -e
 rm -f core.*

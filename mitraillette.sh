@@ -102,7 +102,7 @@ logdiff()
 		return
 	fi
 
-	normdiff.sh $rrconf/NODE.001_01 $ddconf/NODE.001_01 $nogp $nosurf
+	normdiff.sh $rrconf/NODE.001_01 $ddconf/NODE.001_01 $nogp $nofp $nosurf
 
 	[ $stat -eq 0 ] && return
 
@@ -186,6 +186,7 @@ force=0
 rerun=0
 inter=0
 nogp=""
+nofp=""
 nosurf=""
 stat=1
 hpc=""
@@ -250,6 +251,7 @@ do
 		-prof) prof=1;;
 		-force) force=1;;
 		-nogp) nogp="-nogp";;
+		-nofp) nofp="-nofp";;
 		-nosurf) nosurf="-nosurf";;
 		-nostat) stat=0;;
 		-f) rerun=1;;
@@ -400,7 +402,7 @@ do
 	echo $conf >> jobmatch.txt
 	if [ $prof -eq 1 ]
 	then
-		echo -e "$conf:\t$wall' $nnodes nodes, ${ntaskt}x$nthread MPI/OMP"
+		echo -e "$conf: $wall' $nnodes nodes, ${ntaskt}x$nthread MPI/OMP"
 		continue
 	fi
 
@@ -453,7 +455,7 @@ do
 			name=model;;
 	esac
 
-	echo "Setting conf $conf in $name.sh $nnodes $wall' $bin"
+	echo "Setting job $conf in $name.sh $bin $wall' ($nnodes nodes, ${ntaskt}x$nthread MPI/OMP)"
 
 	{
 		awk -v dd=$ana '$1=="'$conf'" {
