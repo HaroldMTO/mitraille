@@ -29,7 +29,7 @@ if [ -n "$MPI_COMMAND" ]
 then
 	echo "Run MPI with command $MPI_COMMAND"
 	alias mpiexe='mpiauto --wrap -np _ntaskt -nnp _ntpn --prefix-command $MPI_COMMAND --'
-elif type mpirun >dev/null 2>&1
+elif type mpirun >/dev/null 2>&1
 then
 	module load intelmpi
 	if [ -n "$MAP_OPT" ]
