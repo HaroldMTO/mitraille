@@ -1,3 +1,4 @@
+
 # mandatory variables for ODB
 export ODB_CMA=ECMA
 export ODB_SRCPATH_ECMA=ECMA_CAN
@@ -8,4 +9,4 @@ export ODB_OVERWRITE_METHOD=1
 export NPROCA=_ntasks
 export NPROCB=1
 
-cp -f ECMA_CAN/IOASSIGN .
+ln -sf ECMA_CAN/IOASSIGN .

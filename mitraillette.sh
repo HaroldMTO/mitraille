@@ -13,7 +13,7 @@ Description:
 Usage:
 	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-opt opt] [-noenv] \
 [-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] [-info] \
-[-base YYYYMMDD -res HH] [-prof] [-force] [-i] [-f] [-nogp] [-nostat] [-h]
+[-base YYYYMMDD -res HH] [-prof] [-force] [-i] [-f] [-nogp] [-stat] [-h]
 
 Arguments:
 	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to \
@@ -44,7 +44,7 @@ pattern [HH]/[YYYYMMDD]/[initfile].
 normdiff.sh)
 	-nosurf: in norms checking, activate -nosr=urf option (no norms for surface fields, \
 cf normdiff.sh)
-	-nostat: deactivate statistics checkings on data files produced by the jobs
+	-stat: activate statistics checkings on data files produced by the jobs
 	-h: print this help and exit normally
 
 Details:
@@ -188,7 +188,7 @@ inter=0
 nogp=""
 nofp=""
 nosurf=""
-stat=1
+stat=0
 hpc=""
 
 while [ $# -ne 0 ]
@@ -253,7 +253,7 @@ do
 		-nogp) nogp="-nogp";;
 		-nofp) nofp="-nofp";;
 		-nosurf) nosurf="-nosurf";;
-		-nostat) stat=0;;
+		-stat) stat=1;;
 		-f) rerun=1;;
 		-i) inter=1;;
 		*)
@@ -495,16 +495,16 @@ do
 	if [ -s $cycle/obstable ]
 	then
 		awk -v dd=$const/obs '$1=="'$conf'" {
-			printf("cp -rf %s/%s/* .\n",dd,$2);}' $cycle/obstable > odb.txt
+			printf("cp -rf %s/%s/*CMA* .\n",dd,$2);}' $cycle/obstable > odb.txt
 	fi
 
 	if [ -s $cycle/stattable ]
 	then
-		awk -v dd=$const/obs '$1=="'$conf'" {
+		awk -v dd=$const/const '$1=="'$conf'" {
 			printf("ln -sf %s/%s/* .\n",dd,$2);}' $cycle/sattable > sat.txt
 
-		awk -v dd=$const/obs '$1=="'$conf'" {
-			printf("ln -sf %s/%s/* .\n",dd,$2);}' $cycle/stattable > stat.txt
+		awk -v dd=$const/stat '$1=="'$conf'" {
+			printf("ln -sf %s/* .\n",dd);}' $cycle/stattable > stat.txt
 	fi
 
 	{
@@ -515,11 +515,13 @@ do
 		then
 			lfitools=$pack/bin/LFITOOLS
 		else
-			lfitools=$(ls $packs/*.2y.pack/bin/lfitools 2>/dev/null | sort -r | head -1)
-			if [ -z "$lfitools" ]
-			then
-				lfitools=$(ls $packs/*.2y.pack/bin/LFITOOLS 2>/dev/null | sort -r | head -1)
-			fi
+			lfitools=$(ls -t1 $packs/*.2y.pack/bin/lfitools 2>/dev/null | head -1)
+			[ -n "$lfitools" ] && [ -x $lfitools ] ||
+				lfitools=$(ls -t1 $packs/*.2y.pack/bin/LFITOOLS 2>/dev/null | head -1)
+			[ -n "$lfitools" ] && [ -x $lfitools ] ||
+				lfitools=$(ls -t1 ~gco/packs/*.2y.pack/bin/lfitools 2>/dev/null | head -1)
+			[ -n "$lfitools" ] && [ -x $lfitools ] ||
+				lfitools=$(ls -t1 ~gco/packs/*.2y.pack/bin/LFITOOLS 2>/dev/null | head -1)
 		fi
 
 		if [ "$lfitools" ]
@@ -638,7 +640,7 @@ do
 		-e "/TAG INIT/r init.txt" $ddconf/$name.sh
 	[ $name = "screen" ] && sed -i -re 's:(ICM..)ARPE:\1SCRE:g' $ddconf/$name.sh
 	[ $name = "minim" ] && sed -i -re 's:(ICM..)ARPE:\1MINI:g' $ddconf/$name.sh
-	[ $name = "anasurf" ] && sed -i -re 's:(ICM..)ARPE:\1ANSU:g' $ddconf/$name.sh
+	[ $name = "anasurf" ] && sed -i -re 's:(ICM..)ARPE:\1CANS:g' $ddconf/$name.sh
 
 	[ $nj -eq 0 ] && continue
 

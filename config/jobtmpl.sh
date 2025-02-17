@@ -334,6 +334,6 @@ rm -f stdout.* stderr.* core.*
 
 echo -e "\nLog and profiling files:"
 ls -l _name.log NODE.001_01 env.txt mpi*.out mpi*.err
-ls -l | grep -E '(meminfo\.txt|ifs\.stat|linux_bind\.txt)'
+ls -l | grep -E '(meminfo\.txt|ifs\.stat|linux_bind\.txt)' || true
 
 touch jobOK
