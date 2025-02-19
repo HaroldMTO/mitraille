@@ -332,14 +332,6 @@ data: '$data'" >&2
 	coupling=$data/$bb
 fi
 
-if [ -d config ]
-then
-	echo "--> use local directory config/"
-	config=$PWD/config
-else
-	config=$mitra/config
-fi
-
 if [ -d $cycle ]
 then
 	cycle=$(cd $cycle > /dev/null && pwd)
@@ -379,6 +371,13 @@ fi
 tmpdir=$(mktemp --tmpdir -d mitraXXX)
 trap 'rm -r $tmpdir' 0
 
+cp -r $mitra/config $tmpdir
+if [ -d config ]
+then
+	echo "--> use local directory config/"
+	cp -r config $tmpdir
+fi
+
 cd $tmpdir
 
 if [ $info -eq 1 ]
@@ -392,7 +391,7 @@ then
 	exit
 fi
 
-grep -vE '^\s*#' $config/profil_table | \
+grep -vE '^\s*#' config/profil_table | \
 	while read conf bin mem wall cpu ntaskio ntaskt nnodes nthread
 do
 	[ -n "$bin0" -a $bin != "$bin0" ] && continue
@@ -429,7 +428,7 @@ do
 		[ "$ref" ] && logdiff
 
 		continue
-	elif [ $force -eq 0 ] && ! grep -qE "^$conf$" $config/validconfs.txt
+	elif [ $force -eq 0 ] && ! grep -qE "^$conf$" config/validconfs.txt
 	then
 		echo "--> invalid conf $conf"
 		continue
@@ -459,13 +458,13 @@ do
 
 	{
 		awk -v dd=$ana '$1=="'$conf'" {
-			printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/initable
+			printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' config/initable
 		awk -v dd=$anasfx '$1=="'$conf'" {
-			printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/inisfxtable
+			printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' config/inisfxtable
 	} > init.txt
 
 	awk -v dd=$const/pgd '$1=="'$conf'" {
-		printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' $cycle/constable > const.txt
+		printf("ln -sfv %s/%s %s\n",dd,$2,$3);}' config/constable > const.txt
 
 	if [ -n "$base" -a -s init.txt ]
 	then
@@ -484,27 +483,27 @@ do
 		awk -v dd=$const/clim -v mm=".m$MM" '$1=="'$conf'" {
 			fclim = gensub("\\.mMONTH$",mm,"",gensub("^PATH",dd,"",$2));
 			printf("ln -sfv %s %s\n",fclim,$3);
-			}' $cycle/climtable
+			}' config/climtable
 
 		awk -v dd=$const/clim -v mm=".m$MM" '$1=="'$conf'" {
 			fclim = gensub("\\.mMONTH$",mm,"",$2);
 			printf("ln -sfv %s/%s %s\n",dd,fclim,$3);
-			}' $cycle/climfptable $cycle/filtertable
+			}' config/climfptable config/filtertable
 	} > clim.txt
 
-	if [ -s $cycle/obstable ]
+	if [ -s config/obstable ]
 	then
 		awk -v dd=$const/obs '$1=="'$conf'" {
-			printf("cp -rf %s/%s/*CMA* .\n",dd,$2);}' $cycle/obstable > odb.txt
+			printf("cp -rf %s/%s/*CMA* .\n",dd,$2);}' config/obstable > odb.txt
 	fi
 
-	if [ -s $cycle/stattable ]
+	if [ -s config/stattable ]
 	then
 		awk -v dd=$const/const '$1=="'$conf'" {
-			printf("ln -sf %s/%s/* .\n",dd,$2);}' $cycle/sattable > sat.txt
+			printf("ln -sf %s/%s/* .\n",dd,$2);}' config/sattable > sat.txt
 
 		awk -v dd=$const/stat '$1=="'$conf'" {
-			printf("ln -sf %s/* .\n",dd);}' $cycle/stattable > stat.txt
+			printf("ln -sf %s/* .\n",dd);}' config/stattable > stat.txt
 	fi
 
 	{
@@ -533,7 +532,7 @@ do
 
 		cat <<-EOF
 			export OMP_NUM_THREADS=$nthread
-			varenv=$cycle/varenv.txt
+			varenv=config/varenv.txt
 			nam=$cycle/deltanam/$conf.nam
 			bin=$pack/bin/$bin
 		EOF
@@ -542,21 +541,21 @@ do
 		find $cycle/fcnam/ -name $conf.\* | \
 			sed -re 's:(.+)\.nam[0-9]+$:fcnam=\1.nam:' | uniq
 		find $cycle/deltaquad/ -name $conf.\* -printf "quadnam=%p\n"
-		awk '$1=="'$conf'" {printf("pgd=%s\n",$2);}' $cycle/pgdtable
-		awk '$1=="'$conf'" {printf("pgdfa=../%s/%s\n",$2,$3);}' $cycle/pgdfatable
+		awk '$1=="'$conf'" {printf("pgd=%s\n",$2);}' config/pgdtable
+		awk '$1=="'$conf'" {printf("pgdfa=../%s/%s\n",$2,$3);}' config/pgdfatable
 		awk -v dd=$coupling '$1=="'$conf'" {
-			printf("lbc=%s\n",gensub("^PATH",dd,"",$2));}' $cycle/coupltable
-		awk '$1=="'$conf'" {printf("ios=%s\n",$2);}' $cycle/ioservtable
+			printf("lbc=%s\n",gensub("^PATH",dd,"",$2));}' config/coupltable
+		awk '$1=="'$conf'" {printf("ios=%s\n",$2);}' config/ioservtable
 
 		if [ -n "$base" -a -n "$data" ]
 		then
 			awk -v dd=$data/$RES/$base '$1=="'$conf'" {printf("save=%s\n",dd);}' \
-				$cycle/savetable
+				config/savetable
 		fi
 	} > job.profile
 
 	awk -v dd=$cycle/fpnam '$1=="'$conf'" {printf("cp %s/%s %s\n",dd,$2,$3);}' \
-		$cycle/fptable > fpos.txt
+		config/fptable > fpos.txt
 	fpnam=$(cut -d " " -f3 fpos.txt | sed -re 's:[0-9]+$::' | uniq)
 	[ "$fpnam" ] && echo "fpnam=$fpnam" >> job.profile
 
@@ -565,32 +564,32 @@ do
 	then
 		cat >> job.profile <<-EOF
 			diffnam=${diffnam/_CONVPGD\.nam/}
-			orog=$config/orog.txt
+			orog=config/orog.txt
 		EOF
 	fi
 
 	if [ $bin = "MASTER911" ]
 	then
-		tmpl=$config/job911tmpl.sh
+		tmpl=config/job911tmpl.sh
 	elif [ $bin = "PGD" ]
 	then
 		cat >> job.profile <<-EOF
 			c923=$const/const/923N
 			ecoclimap=$const/clim/ecoclimap
-			lfi2fa=$config/lfi2fa.txt
+			lfi2fa=config/lfi2fa.txt
 			sfxtools=$pack/bin/SFXTOOLS
 		EOF
 
-		tmpl=$config/pgdtmpl.sh
+		tmpl=config/pgdtmpl.sh
 	elif echo $conf | grep -q C923
 	then
 		cat >> job.profile <<-EOF
 			c923=$const/const/923N
-			gridnam=$config/grid.nam
-			lfi2fa=$config/lfi2fa.txt
+			gridnam=config/grid.nam
+			lfi2fa=config/lfi2fa.txt
 		EOF
 
-		tmpl=$config/job923tmpl.sh
+		tmpl=config/job923tmpl.sh
 	else
 		init=$(grep -E ' (EBAUCHE|ICMSH\w+INIT)$' init.txt | sed -re 's:.+ (.+) .+:\1:')
 		if [ -n "$init" ] && [ ! -s $init ]
@@ -604,7 +603,7 @@ do
 			ecoclimap=$const/clim/ecoclimap
 		EOF
 
-		tmpl=$config/jobtmpl.sh
+		tmpl=config/jobtmpl.sh
 	fi
 
 	ntask=$((ntaskt-ntaskio))
@@ -613,23 +612,23 @@ do
 	echo "Creating $ddconf"
 	mkdir -p $ddconf
 
-	[ -s odb.txt ] && sed -e "s:_ntasks:$ntask:g" $config/odb$name.sh >> odb.txt
+	[ -s odb.txt ] && sed -e "s:_ntasks:$ntask:g" config/odb$name.sh >> odb.txt
 
-	cp $config/IFSenv.txt $config/env.sh $ddconf
+	cp config/IFSenv.txt config/env.sh $ddconf
 	if [ -s $cycle/$bin.nml ]
 	then
 		cp $cycle/$bin.nml $ddconf/vide.nml
-	elif [ -s $config/$bin.nml ]
+	elif [ -s config/$bin.nml ]
 	then
-		cp $config/$bin.nml $ddconf/vide.nml
+		cp config/$bin.nml $ddconf/vide.nml
 	elif [ -s $cycle/vide.nml ]
 	then
 		cp $cycle/vide.nml $ddconf
 	else
-		cp $config/vide.nml $ddconf
+		cp config/vide.nml $ddconf
 	fi
 
-	sed -e "/TAG FUNC/r $config/cpnam.sh" $tmpl > $ddconf/$name.sh
+	sed -e "/TAG FUNC/r config/cpnam.sh" $tmpl > $ddconf/$name.sh
 	sed -i -e "s:_name:$name:g" -e "s:_ntaskt:$ntaskt:g" \
 		-e "s:_ntasks:$ntask:g" -e "s:_ntaskio:$ntaskio:g" \
 		-e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
