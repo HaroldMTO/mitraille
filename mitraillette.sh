@@ -153,7 +153,7 @@ jobwait()
 
 		while sacct -nPXj $jobid -o state | grep -qiE $stats
 		do
-			sleep 5
+			sleep 3
 		done
 
 		sacct -nPXj $jobid -o state | grep -vi COMPLETED && continue
@@ -161,7 +161,7 @@ jobwait()
 		ddconf=$ddcy/$conf/$bb
 		[ -s $ddconf/NODE.001_01 ] && grep -iE '\<nan\>' $ddconf/NODE.001_01 || true
 
-		[ -n "$ref" ] && logdiff
+		[ -z "$ref" ] || logdiff
 	done < jobs.txt
 }
 
@@ -431,7 +431,7 @@ do
 	then
 		echo "--> job $conf already completed"
 		[ -s $ddconf/NODE.001_01 ] && grep -iE '\<nan\>' $ddconf/NODE.001_01 || true
-		[ -n "$ref" ] && logdiff
+		[ -z "$ref" ] || logdiff
 
 		continue
 	elif [ $force -eq 0 ] && ! grep -qE "^$conf$" config/validconfs.txt
