@@ -9,7 +9,12 @@
 #SBATCH -o _name.log
 #SBATCH --export=_varexp
 
-#TAG FUNCTION
+cpnam()
+{
+	sed -re 's/__NTASK_IO__/_ntaskio/' -e 's/__NTASKS__/_ntasks/' $1 | \
+		tr -d '\t' | tr '\n' '\t' | sed -re 's:,&\t\s*:,:g' -e 's:\t+:\n:g' > $3
+	xpnam --dfile=$2 --inplace $3
+}
 
 if [ "$SLURM_JOB_NAME" ]
 then
@@ -72,6 +77,7 @@ then
 	fi
 fi
 
+PATH=$PATH:/opt/softs/mpiauto:~gco/public/bin:~petithommeh/util/io_serv_tools
 env > env.txt
 
 if [ -s $varenv ]
@@ -246,7 +252,7 @@ then
 	for fnam in $fcnam*
 	do
 		echo -e "\n. job with namelist $fnam"
-		cpnam $nam vide.nml fort.4
+		cpnam $fnam vide.nml fort.4
 
 		mpiexe $bin >> mpifc.out 2>> mpifc.err
 		find -type f -newer fort.4 | grep -vE $lstRE >> mpifcOK

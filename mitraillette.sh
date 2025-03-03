@@ -11,16 +11,16 @@ Description:
 	Test a list of IFS, ARPEGE, ALADIN, AROME, ALARO, PGD, FP,... configurations
 
 Usage:
-	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-opt opt] [-noenv] \
+	mitraillette.sh -cycle CYCLE -rc rcfile [-conf conf] [-opt OPT] [-noenv] \
 [-b bin] [-t time] [-nn nnodes] [-omp nomp] [-nj njobs] [-ref refpath] [-info] \
-[-base YYYYMMDD -res HH] [-prof] [-force] [-i] [-f] [-nogp] [-stat] [-h]
+[-base YYYYMMDD -res HH] [-prof] [-force] [-i] [-f] [-nogp] [-h]
 
 Arguments:
 	CYCLE: IFS cycle tag name (following 'cyNN[t1][_main|r1].vv') where to \
 find IFS binaries
 	rcfile: resource file for a model job (cf Details)
 	-conf: filter for configuration name, as referenced in profil_table
-	-opt: pack option, according to pack naming (default: '2y')
+	-OPT: pack option, according to pack naming (default: '2y')
 	-noenv: do not export (current) environment in job scripts. Note: \
 environment is set from shell's startup, as login shell (-> .profile).
 	-b: filter for binary, setting and running jobs only for binary 'bin'
@@ -42,21 +42,21 @@ pattern [HH]/[YYYYMMDD]/[initfile].
 20 omp).
 	-nogp: in norms checking, activate -nogp option (no grid-point norms, cf \
 normdiff.sh)
-	-nosurf: in norms checking, activate -nosr=urf option (no norms for surface fields, \
+	-nosurf: in norms checking, activate -nosurf option (no norms for surface fields, \
 cf normdiff.sh)
-	-stat: activate statistics checkings on data files produced by the jobs
 	-h: print this help and exit normally
 
 Details:
-	rcfile is sourced and must set the following (interactive) variables:
-		- dirout: path to root directory of job execution
+	rcfile is sourced and can or must set the following (interactive) variables:
+		- dirout: path to root directory of job execution (default: '$TMPDIR')
+		- config: path to alternative mitraillette settings (default: mitraillette settings)
 		- const: path to constant files (constants, clims, coupling files, \
-guess and analysis files)
+guess and analysis files, default: path to mitraillette constants)
 		- packs: path to packs, one of them corresponding to CYCLE and opt
 	These variables are used in here as shell commands, hence do not need to \
 be in environment.
 
-	Batch jobs need variable PATH contain path(s) to xpnam and io_poll. Any \
+	Batch jobs extend variable PATH to contain path(s) to xpnam and io_poll. Any \
 other environment variable (to be used in the binary) may be added in user's \
 environment, either in current one or preferably in default one (ie startup \
 file .bashrc).
@@ -67,10 +67,11 @@ file .bashrc).
 SSH protocol for connexion. Master mode is used for optimization reasons.
 
 Dependencies:
-	utilities normdiff.sh and statdiff.sh
+	if comparison is asked (option -ref), utilities normdiff.sh
 "
 }
 
+# not used (could be usefull when init file names don't show month in standard way)
 getbase()
 {
 	DR_HOOK=0 epy_dump.py $1 -f frame | grep 'Base date/time' | \
@@ -81,7 +82,7 @@ getbase()
 
 logdiff()
 {
-	local fic ficref rrconf=$ref/$conf/$bb
+	local rrconf=$ref/$conf/$bb
 
 	if [ "$hpc" ] && [ ! -e $rrconf/jobOK -o ! -s $rrconf/NODE.001_01 ]
 	then
@@ -103,8 +104,11 @@ logdiff()
 	fi
 
 	normdiff.sh $rrconf/NODE.001_01 $ddconf/NODE.001_01 $nogp $nofp $nosurf
+}
 
-	[ $stat -eq 0 ] && return
+statdiff()
+{
+	local fic ficref rrconf=$ref/$conf/$bb
 
 	find $rrconf -name ARPE.\*.\* | grep -E '\.[0-9]{4}\.[A-Z0-9_]+$' > diff.txt ||
 	{
@@ -134,10 +138,11 @@ jobwait()
 	local jobid conf ddconf
 	local stats="CONFIGURING|COMPLETING|PENDING|RUNNING|RESIZING|SUSPENDED"
 
-	sleep 2
+	sleep 1.5
+
 	while read jobid conf
 	do
-		[ -z "$(sacct -nXj $jobid)" ] && { sleep 2;
+		[ -z "$(sacct -nXj $jobid)" ] && { sleep 1;
 			[ -z "$(sacct -nXj $jobid)" ] && sleep 2; }
 		if [ -z "$(sacct -nXj $jobid)" ]
 		then
@@ -156,9 +161,7 @@ jobwait()
 		ddconf=$ddcy/$conf/$bb
 		[ -s $ddconf/NODE.001_01 ] && grep -iE '\<nan\>' $ddconf/NODE.001_01 || true
 
-		[ -z "$ref" ] && continue
-
-		logdiff
+		[ -n "$ref" ] && logdiff
 	done < jobs.txt
 }
 
@@ -174,7 +177,7 @@ conf=""
 opt="2y"
 env="ALL"
 bin0=""
-conf0=""
+confre=""
 time=1000
 nn=1000
 nomp=400
@@ -188,7 +191,6 @@ inter=0
 nogp=""
 nofp=""
 nosurf=""
-stat=0
 hpc=""
 
 while [ $# -ne 0 ]
@@ -203,7 +205,7 @@ do
 			shift
 			;;
 		-conf)
-			conf0=$2
+			confre=$2
 			shift
 			;;
 		-opt)
@@ -253,7 +255,6 @@ do
 		-nogp) nogp="-nogp";;
 		-nofp) nofp="-nofp";;
 		-nosurf) nosurf="-nosurf";;
-		-stat) stat=1;;
 		-f) rerun=1;;
 		-i) inter=1;;
 		*)
@@ -275,33 +276,37 @@ rcfile: '$rcfile'
 fi
 
 # default values
+packs=""
+config=$mitra/config
 const=$mitra/const
 dirout=$TMPDIR
 
 . $rcfile
 
-if [ -z "$packs" -o -z "$const" -o -z "$dirout" ]
+if [ -z "$packs" -o -z "$config" -o -z "$const" -o -z "$dirout" ]
 then
 	printf "Error: rc variables not set
 dirout: '$dirout'
+config: '$config'
 const: '$const'
 packs: '$packs'
 " >&2
 	exit 1
-elif [ ! -d $packs -o ! -d $const -o ! $dirout ]
+elif [ ! -d $packs -o ! -d $config -o ! -d $const -o ! $dirout ]
 then
 	echo "Error: mandatory directories missing" >&2
-	ls -d $packs $const $dirout
+	ls -d $packs/ $config/ $const/ $dirout/
 fi
 
 cy=$(basename $cycle)
-pack=$(find -L $packs -maxdepth 1 -type d -name $cy\*.$opt.pack | tail -1)
+pack=$packs/$cy
+[ -d $pack ] || pack=$(find -L $packs -maxdepth 1 -type d -name $cy\*.$opt.pack | tail -1)
 [ -z "$pack" ] && pack=$(find -L $packs -maxdepth 1 -type d -name $cy\*.$opt | tail -1)
 [ -z "$pack" ] && pack=$(find -L $packs -maxdepth 1 -type d -name $cy\* | tail -1)
 
 if [ -z "$pack" ]
 then
-	echo "Error: no pack named '$(basename $cycle)*' on '$packs'" >&2
+	echo "Error: no pack named '$cy*' on '$packs'" >&2
 	exit 1
 fi
 
@@ -324,7 +329,7 @@ data: '$data'" >&2
 	fi
 
 	RES=$(printf "%02d" $res)
-	ls -d $data/$RES/$base > /dev/null
+	ls $data/$RES/$base/ > /dev/null
 
 	bb=$RES/$base
 	ana=$data/$bb
@@ -338,10 +343,10 @@ then
 	echo "--> use user's jobs directory $cycle"
 else
 	echo $cycle | grep -vqE '^/' && cycle=$mitra/$cycle
-	ls -d $cycle >/dev/null
+	ls $cycle/ > /dev/null
 fi
 
-ddcy=$dirout/$(basename $cycle)
+ddcy=$dirout/$cy
 
 if [ "$hpc" ]
 then
@@ -365,17 +370,18 @@ fi
 if [ "$ref" ] && [ ! -d $ref ]
 then
 	ref=$dirout/$ref
-	ls -d $ref >/dev/null
+	ls $ref/ >/dev/null
+	type normdiff.sh > /dev/null || PATH=$PATH:$mitra
 fi
 
 tmpdir=$(mktemp --tmpdir -d mitraXXX)
 trap 'rm -r $tmpdir' 0
 
 cp -r $mitra/config $tmpdir
-if [ -d config ]
+if ! diff -rq $config $mitra/config > /dev/null
 then
-	echo "--> use local directory config/"
-	cp -r config $tmpdir
+	echo "--> use local directory $config"
+	cp -r $config $tmpdir
 fi
 
 cd $tmpdir
@@ -395,7 +401,7 @@ grep -vE '^\s*#' config/profil_table | \
 	while read conf bin mem wall cpu ntaskio ntaskt nnodes nthread
 do
 	[ -n "$bin0" -a $bin != "$bin0" ] && continue
-	[ -n "$conf0" ] && echo $conf | grep -qvE "$conf0" && continue
+	[ -n "$confre" ] && echo $conf | grep -qvE "$confre" && continue
 	[ $wall -gt $time -o $nnodes -gt $nn -o $nthread -gt $nomp ] && continue
 
 	echo $conf >> jobmatch.txt
@@ -425,7 +431,7 @@ do
 	then
 		echo "--> job $conf already completed"
 		[ -s $ddconf/NODE.001_01 ] && grep -iE '\<nan\>' $ddconf/NODE.001_01 || true
-		[ "$ref" ] && logdiff
+		[ -n "$ref" ] && logdiff
 
 		continue
 	elif [ $force -eq 0 ] && ! grep -qE "^$conf$" config/validconfs.txt
@@ -628,15 +634,14 @@ do
 		cp config/vide.nml $ddconf
 	fi
 
-	sed -e "/TAG FUNC/r config/cpnam.sh" $tmpl > $ddconf/$name.sh
-	sed -i -e "s:_name:$name:g" -e "s:_ntaskt:$ntaskt:g" \
+	sed -e "s:_name:$name:g" -e "s:_ntaskt:$ntaskt:g" \
 		-e "s:_ntasks:$ntask:g" -e "s:_ntaskio:$ntaskio:g" \
 		-e "s:_nnodes:$nnodes:g" -e "s:_ntpn:$ntpn:g" \
 		-e "s:_nthreads:$nthread:g" -e "s:_maxmem:$mem:g" -e "s:_wall:$wall:g" \
 		-e "s:_varexp:$env:" -e "/TAG PROFILE/r job.profile" \
 		-e "/TAG CONST/r const.txt" -e "/TAG CLIM/r clim.txt" -e "/TAG SAT/r sat.txt" \
 		-e "/TAG ODB/r odb.txt" -e "/TAG STAT/r stat.txt" -e "/TAG FPOS/r fpos.txt" \
-		-e "/TAG INIT/r init.txt" $ddconf/$name.sh
+		-e "/TAG INIT/r init.txt" $tmpl > $ddconf/$name.sh
 	[ $name = "screen" ] && sed -i -re 's:(ICM..)ARPE:\1SCRE:g' $ddconf/$name.sh
 	[ $name = "minim" ] && sed -i -re 's:(ICM..)ARPE:\1MINI:g' $ddconf/$name.sh
 	[ $name = "anasurf" ] && sed -i -re 's:(ICM..)ARPE:\1CANS:g' $ddconf/$name.sh

@@ -9,7 +9,12 @@
 #SBATCH -o _name.log
 #SBATCH --export=_varexp
 
-#TAG FUNCTION
+cpnam()
+{
+	sed -re 's/__NTASK_IO__/_ntaskio/' -e 's/__NTASKS__/_ntasks/' $1 | \
+		tr -d '\t' | tr '\n' '\t' | sed -re 's:,&\t\s*:,:g' -e 's:\t+:\n:g' > $3
+	xpnam --dfile=$2 --inplace $3
+}
 
 if [ "$SLURM_JOB_NAME" ]
 then
@@ -21,6 +26,7 @@ then
 "
 fi
 
+PATH=$PATH:/opt/softs/mpiauto:~gco/public/bin:~petithommeh/util/io_serv_tools
 env > env.txt
 
 lstRE="\.(log|out|err)|(ifs|meminfo|linux_bind|NODE|core|std(out|err))\."

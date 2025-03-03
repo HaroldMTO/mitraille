@@ -1,6 +1,3 @@
-# various tools (lfitools, xpnam, tnt, vortex,...)
-PATH=$PATH:/opt/softs/mpiauto:~petithommeh/util/io_serv_tools
-
 # mandatory variables for main binaries (silent settings)
 ulimit -s unlimited
 export DR_HOOK=1
