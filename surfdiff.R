@@ -75,7 +75,7 @@ args = strsplit(commandArgs(trailingOnly=TRUE),split="=")
 cargs = lapply(args,function(x) unlist(strsplit(x[-1],split=":")))
 names(cargs) = sapply(args,function(x) x[1])
 
-nd = readLines(cargs$fic1)
+nd = readLines(cargs$fic1,skipNul=TRUE)
 nd = grep("^ *$",nd,value=TRUE,invert=TRUE)
 surf1 = gpnorm2D(nd)
 

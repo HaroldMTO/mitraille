@@ -3,6 +3,7 @@ library(mfnode)
 args = strsplit(commandArgs(trailingOnly=TRUE),split="=")
 cargs = lapply(args,function(x) unlist(strsplit(x[-1],split=":")))
 names(cargs) = sapply(args,function(x) x[1])
+cargs[sapply(cargs,is.null)] = ""
 
 nd = readLines(cargs$fic1,skipNul=TRUE)
 has.fc = any(regexpr("START CNT4",nd) > 0)

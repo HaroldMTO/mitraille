@@ -3,6 +3,7 @@ library(mfnode)
 args = strsplit(commandArgs(trailingOnly=TRUE),split="=")
 cargs = lapply(args,function(x) unlist(strsplit(x[-1],split=":")))
 names(cargs) = sapply(args,function(x) x[1])
+cargs[sapply(cargs,is.null)] = ""
 
 nd = readLines(cargs$fic1,skipNul=TRUE)
 ts1 = getvar("TSTEP",nd)
@@ -12,12 +13,10 @@ if (! has.fc) cat("--> no forecast conf (cnt4) in 1st file\n")
 if (is.null(cargs$re)) {
 	nd = grep("^ *gpnorm gflt0",nd,invert=TRUE,ignore.case=TRUE,value=TRUE)
 	gp1 = gpnorm(nd,lev=0,gpout=gpfre)
+} else if (! nzchar(cargs$re) || regexpr("gpnorm gfl",cargs$re,ignore.case=TRUE) > 0) {
+	gp1 = gpnorm(nd,lev=0,cargs$re,gpout=gpfre)
 } else {
-	if (regexpr("gpnorm gfl",cargs$re,ignore.case=TRUE) > 0) {
-		gp1 = gpnorm(nd,lev=0,cargs$re,gpout=gpfre)
-	} else {
-		gp1 = gpnorm(nd,lev=0,cargs$re,gpfre)
-	}
+	gp1 = gpnorm(nd,lev=0,cargs$re,gpfre)
 }
 
 if (is.null(gp1)) {
@@ -37,12 +36,10 @@ if (ts1 != ts2) stop("different TSTEP")
 if (is.null(cargs$re)) {
 	nd = grep("^ *gpnorm gflt0",nd,invert=TRUE,ignore.case=TRUE,value=TRUE)
 	gp2 = gpnorm(nd,lev=0,gpout=gpfre)
+} else if (! nzchar(cargs$re) || regexpr("gpnorm gfl",cargs$re,ignore.case=TRUE) > 0) {
+	gp2 = gpnorm(nd,lev=0,cargs$re,gpout=gpfre)
 } else {
-	if (regexpr("gpnorm gfl",cargs$re,ignore.case=TRUE) > 0) {
-		gp2 = gpnorm(nd,lev=0,cargs$re,gpout=gpfre)
-	} else {
-		gp2 = gpnorm(nd,lev=0,cargs$re,gpfre)
-	}
+	gp2 = gpnorm(nd,lev=0,cargs$re,gpfre)
 }
 
 if (is.null(gp2)) {
